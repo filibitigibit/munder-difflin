@@ -18,6 +18,7 @@
 import Database from 'better-sqlite3';
 import { app } from 'electron';
 import { join } from 'node:path';
+import { RunStore, applyRunSchema } from './runs';
 
 /** A captured user prompt, as returned to the renderer (camelCase columns). */
 export interface CommandHistoryRow {
@@ -64,11 +65,20 @@ const MIGRATIONS: Array<(db: Database.Database) => void> = [
       );
       CREATE INDEX IF NOT EXISTS idx_ch_agent_ts ON command_history(agent_id, ts DESC);
     `);
+  },
+  // → user_version 2 (Mission Control Phase 1A): the canonical Run primitive and
+  // the append-only, hash-chained event store. Purely ADDITIVE — it creates two
+  // new tables and touches neither `kv` nor `command_history`, so an existing
+  // install keeps every prompt it has recorded. The DDL lives in runs.ts because
+  // that module is Electron-free and therefore directly testable.
+  (db) => {
+    applyRunSchema(db);
   }
 ];
 
 export class PersistStore {
   private db: Database.Database | null = null;
+  private runStore: RunStore | null = null;
 
   /** @param dbPath  Override the DB location (tests). Defaults to userData/harness.db. */
   constructor(private dbPath?: string) {}
@@ -86,6 +96,23 @@ export class PersistStore {
     db.pragma('foreign_keys = ON');
     this.migrate(db);
     this.db = db;
+    this.runStore = new RunStore(db);
+  }
+
+  /**
+   * The canonical Run + Event store (Mission Control Phase 1A).
+   *
+   * This is the ONLY source of truth for run telemetry. roster.json,
+   * registry.json, tasks.json, hive/log.jsonl and cost-ledger.jsonl all live
+   * under HIVE_ROOT, which every agent gets in its environment — they are
+   * evidence inputs, never the record itself.
+   *
+   * Throws when the DB is not open, rather than returning a null the caller
+   * would have to remember to check on every telemetry write.
+   */
+  get runs(): RunStore {
+    if (!this.runStore) throw new Error('PersistStore.open() must be called before using runs');
+    return this.runStore;
   }
 
   private migrate(db: Database.Database): void {
@@ -105,6 +132,7 @@ export class PersistStore {
   close(): void {
     try { this.db?.close(); } catch { /* best-effort on shutdown */ }
     this.db = null;
+    this.runStore = null;
   }
 
   get isOpen(): boolean { return this.db !== null; }

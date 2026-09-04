@@ -357,6 +357,131 @@ const worktreePaths = new Map<string, string>();
  *  `git worktree remove` from the parent tree, not the worktree itself). */
 const worktreeOrigins = new Map<string, string>();
 
+// ─── Mission Control telemetry (Phase 1A) ───────────────────────────────────
+//
+// The run/event store OBSERVES the existing lifecycle; it never drives it. Every
+// call below is best-effort and swallowed: telemetry that can break a spawn or a
+// quit is worse than telemetry that is missing a row.
+//
+// The seams are chosen to match what already happens:
+//   - spawnAgentCore succeeds        → a run starts
+//   - teardownPty                    → that run ENDED (this PTY is finished)
+//   - teardownAndQuit                → the runs are PAUSED, not ended
+// The last two only work as a pair because `killAll()` deliberately suppresses
+// per-PTY teardown (pty.ts), so a quit never routes through teardownPty. That is
+// also why a quit preserves worktrees — the same property makes a safe pause the
+// natural thing to record there.
+
+/** pty id → the run currently attributed to it. */
+const ptyToRun = new Map<string, string>();
+
+/** Mission Control telemetry is never allowed to throw into a lifecycle path.
+ *  Named `mcRecord` rather than anything shorter because `telemetry` is already
+ *  the OTel collector instance in this file. */
+function mcRecord<T>(what: string, fn: () => T): T | undefined {
+  try { return fn(); } catch (e) { console.error(`[mc] ${what}:`, e); return undefined; }
+}
+
+/**
+ * Open a run for a freshly-spawned agent PTY.
+ *
+ * When this agent has a PAUSED run (the app was quit while it was working), the
+ * new run is created as its CONTINUATION rather than as an unrelated attempt —
+ * that link is what makes "closed the laptop at the office, reopened it at home"
+ * legible in the telemetry instead of looking like two disconnected sessions.
+ */
+function openRunForPty(ptyId: string, meta: {
+  agentId: string; provider?: string; model?: string | null;
+  worktreePath?: string | null; cwd?: string | null;
+}): void {
+  mcRecord('openRunForPty', () => {
+    if (!persist.isOpen) return;
+    const runs = persist.runs;
+    const previous = runs.latestPausedRun(meta.agentId);
+    const sessionId = mcRecord('lastSession', () => hive.lastSession(meta.agentId)) ?? null;
+    const run = previous
+      ? runs.resume(previous.run_id, {
+          provider: meta.provider ?? null,
+          model: meta.model ?? null,
+          worktreePath: meta.worktreePath ?? previous.worktree_path,
+          sessionId: sessionId ?? previous.session_id
+        })
+      : runs.createRun({
+          agentId: meta.agentId,
+          status: 'queued',
+          provider: meta.provider ?? null,
+          model: meta.model ?? null,
+          worktreePath: meta.worktreePath ?? null,
+          sessionId
+        });
+    runs.transition(run.run_id, 'running');
+    ptyToRun.set(ptyId, run.run_id);
+  });
+}
+
+/**
+ * Checkpoint and park every still-open run — the safe-pause seam.
+ *
+ * Deliberately SYNCHRONOUS and deliberately incomplete: this runs on the quit
+ * path, where an async `git rev-parse` per worktree would either block the quit
+ * or lose the race with process exit. So it records only what is already known
+ * in-process (worktree path, recorded session id) and leaves sha / branch /
+ * dirty-state NULL. A null here means "not measured", which is the truth;
+ * inventing a SHA would make the checkpoint worse than useless.
+ */
+function pauseOpenRuns(reason: string): void {
+  mcRecord('pauseOpenRuns', () => {
+    if (!persist.isOpen) return;
+    const runs = persist.runs;
+    for (const run of runs.activeRuns()) {
+      mcRecord(`pause ${run.run_id}`, () => {
+        runs.pause(run.run_id, {
+          reason,
+          checkpoint: {
+            worktreePath: run.worktree_path,
+            sessionId: mcRecord('lastSession', () => hive.lastSession(run.agent_id)) ?? run.session_id
+          }
+        });
+      });
+    }
+    ptyToRun.clear();
+  });
+}
+
+/**
+ * Reconcile runs left open by the PREVIOUS process.
+ *
+ * A clean quit parks its runs as `paused`. Anything still sitting in
+ * queued/running/resuming when a new process starts therefore belongs to a
+ * session that died without one — a crash, an OOM, a pulled plug — and is marked
+ * `interrupted`. That distinction is the whole point: "paused" is a promise the
+ * work was checkpointed, and a crash must never be allowed to claim it.
+ */
+function reconcileOrphanedRuns(): void {
+  mcRecord('reconcileOrphanedRuns', () => {
+    if (!persist.isOpen) return;
+    const runs = persist.runs;
+    for (const run of runs.activeRuns()) {
+      mcRecord(`interrupt ${run.run_id}`, () => runs.transition(run.run_id, 'interrupted'));
+    }
+  });
+}
+
+/** Close the run attached to a PTY that has finished. `exitCode` is undefined
+ *  for a deliberate kill (pty:kill, breaker stop) and a number on a natural
+ *  exit — the two are genuinely different outcomes, so they get different
+ *  statuses rather than one vague "ended". */
+function closeRunForPty(ptyId: string, exitCode?: number): void {
+  mcRecord('closeRunForPty', () => {
+    const runId = ptyToRun.get(ptyId);
+    if (!runId) return;
+    ptyToRun.delete(ptyId);
+    if (!persist.isOpen) return;
+    const status = exitCode === undefined ? 'cancelled' : (exitCode === 0 ? 'completed' : 'failed');
+    persist.runs.transition(runId, status, { exitCode: exitCode ?? null });
+  });
+}
+
 /** A live god-triggered ephemeral worker, tracked from spawn to teardown. */
 interface WorkerRec {
   workerId: string;       // == the PTY id == hive agent id (`worker-<reqId>`)
@@ -432,7 +557,11 @@ const preservedWorktrees = new Map<string, PreservedWorktree>();
  * step is wrapped so a teardown error can never crash the caller (an IPC
  * handler or node-pty's onExit).
  */
-function teardownPty(id: string): void {
+function teardownPty(id: string, exitCode?: number): void {
+  // Telemetry first: this PTY's run has ended, and the maps it reads are cleared
+  // below. A quit does NOT come through here (killAll suppresses per-PTY
+  // teardown), which is exactly why a quit records a PAUSE instead.
+  closeRunForPty(id, exitCode);
   // Ephemeral-worker flag, read BEFORE the cleanup below deletes the entry. All
   // worker deaths (done-release, idle/token reap, manual stop, crash) funnel
   // through here, so this is the one place their floor card gets archived
@@ -599,7 +728,9 @@ ptyManager.setExitHandler((id, exitCode) => {
     // Non-zero exit = install failed; leave its honest manual-fix message on screen.
     analytics.track('agent_install_finished', { provider, rung: pending.rung, outcome: 'install_failed' });
   }
-  teardownPty(id);
+  // A NATURAL exit carries its code, so the run is recorded as completed or
+  // failed rather than as a deliberate cancellation.
+  teardownPty(id, exitCode);
 });
 
 /** Keep the system from suspending the harness while agents are running.
@@ -2930,6 +3061,14 @@ async function spawnAgentCore(opts: AgentSpawnOptions, owner: Electron.WebConten
   const res = ptyManager.spawn(opts, owner);
   if (res.ok) analytics.track('agent_spawned', { provider });
   else analytics.track('agent_spawn_failed', { provider, reason: spawnFailReason(res.error) });
+  if (res.ok && opts.hive?.id) {
+    openRunForPty(opts.id, {
+      agentId: opts.hive.id,
+      provider,
+      worktreePath: worktreePaths.get(opts.id) ?? null,
+      cwd: opts.cwd
+    });
+  }
   syncKeepAwake(); // arm the power-save blocker while ≥1 agent PTY is alive (#18)
   // Hand the resolved worktree path back to the renderer so it can persist it on
   // the agent (only set when isolation actually provisioned a worktree above).
@@ -3689,6 +3828,13 @@ function teardownAndQuit(): void {
   try { stopWebhookServer(); } catch (e) { console.error('[quit] webhook.stop:', e); }
   try { memory.stop(); } catch (e) { console.error('[quit] memory.stop:', e); }
   try { reflector.stop(); } catch (e) { console.error('[quit] reflector.stop:', e); }
+  // SAFE PAUSE (Phase 1A foundation). Every still-open run is checkpointed and
+  // parked BEFORE the DB closes, so a quit is recorded as "paused here" rather
+  // than being indistinguishable from a crash. This writes rows and nothing
+  // else — it does not stop an agent, remove a worktree, discard untracked work
+  // or force a commit, and it deliberately runs before killAll(), which
+  // suppresses per-PTY teardown and is why worktrees survive a quit at all.
+  pauseOpenRuns('app-quit');
   try { persist.close(); } catch (e) { console.error('[quit] persist.close:', e); }
   try { hive.stopAllProxyBridges(); } catch (e) { console.error('[quit] stopAllProxyBridges:', e); }
   try { ptyManager.killAll(); } catch (e) { console.error('[quit] killAll:', e); }
@@ -5202,6 +5348,10 @@ app.whenReady().then(() => {
   // Guarded: a DB failure (e.g. a bad native build) must degrade to defaults,
   // never block app startup.
   try { persist.open(); } catch (e) { console.error('[db] open failed:', e); }
+  // Anything still open belongs to a process that died without a clean quit —
+  // mark it interrupted BEFORE this run's spawns create new rows, so "paused"
+  // keeps meaning "checkpointed on purpose".
+  reconcileOrphanedRuns();
   // Auto-update from GitHub releases (packaged builds only; gated on the
   // `autoUpdate` config flag). Download-in-background + restart-to-apply toast;
   // never restarts on its own. Falls back to a notify-only releases/latest
