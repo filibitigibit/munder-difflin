@@ -302,6 +302,15 @@ function orNull<T>(v: T | null | undefined): T | null {
   return v === undefined ? null : v;
 }
 
+/** A chain break belongs to no single run, so it is reported against the global
+ *  `*` identifier rather than being pinned on an arbitrary run id. Shared by
+ *  both places that can raise it, so the two cannot drift apart. */
+function chainFailure(chain: ChainVerdict): SafePauseFailure {
+  return chain.ok
+    ? { runId: '*', reason: 'chain ok' }
+    : { runId: '*', reason: `event hash chain is broken at seq ${chain.brokenAtSeq}: ${chain.reason}` };
+}
+
 function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
@@ -582,7 +591,22 @@ export class RunStore {
       };
     }
     if (targets.length === 0) {
-      return { ok: true, pausedRunIds: [], failures: [], verified: true, chain: this.verifyChain() };
+      // Nothing to pause is NOT the same claim as "the record is intact", and
+      // only the second one licenses a quit. This branch used to hard-code
+      // ok:true while holding a chain verdict that said otherwise, which had a
+      // nasty consequence: a chain-tamper failure is caught AFTER the batch
+      // commits, so by the second quit attempt the runs really were paused,
+      // there was nothing left to pause, and the gate waved the quit through on
+      // a log it had already judged broken. First click fail-closed, second
+      // click straight past it. The chain verdict decides here too.
+      const chain = this.verifyChain();
+      return {
+        ok: chain.ok,
+        pausedRunIds: [],
+        failures: chain.ok ? [] : [chainFailure(chain)],
+        verified: chain.ok,
+        chain
+      };
     }
 
     const ids = targets.map((r) => r.run_id);
@@ -663,9 +687,7 @@ export class RunStore {
     // A run can look perfect while the log around it has been rewritten, so the
     // chain is part of the same verdict rather than a separate nicety.
     const chain = this.verifyChain();
-    if (!chain.ok) {
-      failures.push({ runId: '*', reason: `event hash chain is broken at seq ${chain.brokenAtSeq}: ${chain.reason}` });
-    }
+    if (!chain.ok) failures.push(chainFailure(chain));
     return { ok: failures.length === 0, failures, chain };
   }
 

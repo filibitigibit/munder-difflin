@@ -330,3 +330,126 @@ test('safePauseAll never reports ok when verification fails', (t) => {
   // ok is the AND of "wrote" and "read it back"
   assert.equal(res.ok, res.verified && res.failures.length === 0);
 });
+
+// ─── Phase 1A.1b: an empty floor must not bypass the chain check ─────────────
+//
+// The 1A.1 runtime UI proof found this the hard way. A chain-tamper failure is
+// caught AFTER the batch commits, so the runs really are paused by the time the
+// gate refuses. Click quit a second time and there is nothing left to pause —
+// and the early return for "no open runs" reported ok:true while holding a chain
+// verdict that said otherwise. First click fail-closed, second click walked
+// straight through. "Nothing to pause" is not the same claim as "the record is
+// intact", and only the second one licenses a quit.
+
+test('an empty floor with a VALID chain is safe to quit', (t) => {
+  const { s } = store(t);
+  const r = s.createRun({ agentId: 'a', status: 'running' });
+  s.pause(r.run_id, { reason: 'earlier' });      // nothing active left
+  const res = s.safePauseAll({ reason: 'app-quit' });
+  assert.deepEqual(res.pausedRunIds, []);
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.chain, { ok: true });
+});
+
+test('an empty floor with a BROKEN chain is NOT safe to quit', (t) => {
+  const { s, db, file } = store(t);
+  const r = s.createRun({ agentId: 'a', status: 'running' });
+  s.pause(r.run_id, { reason: 'app-quit' });
+  assert.deepEqual(s.activeRuns(), [], 'precondition: no open runs remain');
+  db.close();
+
+  const raw = new Database(file);
+  raw.exec('DROP TRIGGER IF EXISTS events_no_update');
+  raw.prepare("UPDATE events SET payload_json = '{\"forged\":true}' WHERE seq = 1").run();
+  raw.close();
+
+  const s2 = new RunStore(track(new Database(file)));
+  const res = s2.safePauseAll({ reason: 'app-quit' });
+
+  assert.equal(res.ok, false, 'a broken chain must block the quit even with nothing to pause');
+  assert.equal(res.verified, false);
+  assert.equal(res.chain.ok, false);
+  assert.match(JSON.stringify(res.failures), /chain/i);
+});
+
+test('the empty-floor refusal names a GLOBAL failure, not a fake run id', (t) => {
+  const { s, db, file } = store(t);
+  const r = s.createRun({ agentId: 'a', status: 'running' });
+  s.pause(r.run_id, { reason: 'app-quit' });
+  db.close();
+
+  const raw = new Database(file);
+  raw.exec('DROP TRIGGER IF EXISTS events_no_update');
+  raw.prepare("UPDATE events SET payload_json = '{\"forged\":true}' WHERE seq = 1").run();
+  raw.close();
+
+  const res = new RunStore(track(new Database(file))).safePauseAll({ reason: 'app-quit' });
+  assert.equal(res.failures.length, 1);
+  assert.equal(res.failures[0].runId, '*', 'a chain break belongs to no single run');
+  assert.match(res.failures[0].reason, /seq 1/);
+});
+
+test('the retry after a post-commit refusal is refused again while the chain is broken', (t) => {
+  const { s, db, file } = store(t);
+  const r = s.createRun({ agentId: 'a', status: 'running' });
+  db.close();
+
+  // Break the chain BEFORE the first attempt, exactly as the runtime proof did.
+  const raw = new Database(file);
+  raw.exec('DROP TRIGGER IF EXISTS events_no_update');
+  raw.prepare("UPDATE events SET payload_json = '{\"forged\":true}' WHERE seq = 1").run();
+  raw.close();
+
+  const s2 = new RunStore(track(new Database(file)));
+  const first = s2.safePauseAll({ reason: 'app-quit' });
+  assert.equal(first.ok, false, 'first click: refused');
+  // The writes committed before verification failed, so the run really is paused.
+  assert.equal(s2.getRun(r.run_id).status, 'paused');
+  assert.deepEqual(s2.activeRuns(), [], 'nothing left to pause on the retry');
+
+  const second = s2.safePauseAll({ reason: 'app-quit' });
+  assert.equal(second.ok, false, 'second click MUST still be refused — the chain is still broken');
+  assert.equal(second.chain.ok, false);
+});
+
+test('once the chain is valid again, the empty floor quits', (t) => {
+  const { s, db, file } = store(t);
+  const r = s.createRun({ agentId: 'a', status: 'running' });
+  const original = s.listEvents()[0].payload_json;
+  s.pause(r.run_id, { reason: 'app-quit' });
+  db.close();
+
+  const raw = new Database(file);
+  raw.exec('DROP TRIGGER IF EXISTS events_no_update');
+  raw.prepare("UPDATE events SET payload_json = '{\"forged\":true}' WHERE seq = 1").run();
+  raw.close();
+
+  const s2 = new RunStore(track(new Database(file)));
+  assert.equal(s2.safePauseAll({ reason: 'app-quit' }).ok, false);
+
+  // Put the original payload back — the chain heals because the hash is over
+  // the CONTENTS, not over a separate marker.
+  const raw2 = new Database(file);
+  raw2.prepare('UPDATE events SET payload_json = ? WHERE seq = 1').run(original);
+  raw2.close();
+
+  const s3 = new RunStore(track(new Database(file)));
+  const res = s3.safePauseAll({ reason: 'app-quit' });
+  assert.equal(res.ok, true, JSON.stringify(res.failures));
+  assert.deepEqual(res.chain, { ok: true });
+});
+
+test('the empty-floor early return does not hard-code ok:true', () => {
+  const src = readSource('src/main/runs.ts');
+  const at = src.indexOf('targets.length === 0');
+  assert.ok(at > -1, 'the empty-floor branch must exist');
+  // Strip comments: prose about the old bug legitimately mentions it, and this
+  // check is about what the branch DOES.
+  const branch = src.slice(at, at + 900)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '');
+  assert.ok(!/ok:\s*true/.test(branch),
+    'the empty-floor branch must derive ok from the chain verdict, never assert it');
+  assert.match(branch, /chain\.ok|verifyChain/,
+    'the empty-floor branch must consult the chain');
+});
