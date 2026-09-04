@@ -29,7 +29,8 @@ const ROOT = path.join(__dirname, '..');
  *  `test:focused` finds nothing on Windows. */
 const FILES = [
   'test/native/run-store.test.cjs',
-  'test/native/run-migration.test.cjs'
+  'test/native/run-migration.test.cjs',
+  'test/native/safe-quit.test.cjs'
 ];
 
 function electronBinary() {

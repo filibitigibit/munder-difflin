@@ -504,7 +504,7 @@ export function App() {
             window.cth.cancelClose();
             setQuitWarn(null);
           }}
-          onConfirm={async () => { await window.cth.confirmClose(); }}
+          onConfirm={async () => await window.cth.confirmClose()}
           onClosingTime={startClosingTime}
         />
       )}

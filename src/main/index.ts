@@ -32,6 +32,7 @@ import { MemoryManager } from './memory';
 import { KnowledgeManager } from './knowledge';
 import { MemoryReflector, type ReflectSettings } from './reflect';
 import { PersistStore } from './db';
+import type { SafePauseResult } from './runs';
 import { readAgentUsage, readContextTokens, seedSessionTranscript, resolveSessionCwd } from './transcript';
 import { listIssues, listCIRuns } from './github';
 import { SlackWebhookServer, SlackReplyServer, postSlackReply, type SlackEventFile } from './slack';
@@ -420,32 +421,55 @@ function openRunForPty(ptyId: string, meta: {
 }
 
 /**
- * Checkpoint and park every still-open run — the safe-pause seam.
+ * The SAFE-QUIT GATE — the one place where telemetry is allowed to stop the app.
  *
- * Deliberately SYNCHRONOUS and deliberately incomplete: this runs on the quit
- * path, where an async `git rev-parse` per worktree would either block the quit
- * or lose the race with process exit. So it records only what is already known
- * in-process (worktree path, recorded session id) and leaves sha / branch /
- * dirty-state NULL. A null here means "not measured", which is the truth;
- * inventing a SHA would make the checkpoint worse than useless.
+ * Everything else in this file records best-effort: a dropped row is a gap in
+ * the history and the lifecycle carries on. This is different, and the
+ * difference is a promise to a human. "Safe pause" tells someone their agents'
+ * work is parked and it is safe to shut the laptop and walk out of the office.
+ * If that write did not land, the app must NOT close — because the alternative
+ * is a quit that reports success while the record of where the work stopped was
+ * never written.
+ *
+ * Phase 1A shipped this as a swallowed `try/catch`, and the runtime proof showed
+ * exactly what that buys: an injected pause failure produced one console line
+ * and a completely normal quit. Hence the gate.
+ *
+ * DELIBERATELY NOT ROUTED THROUGH `mcRecord`. That helper exists to make
+ * telemetry unable to break a lifecycle; here the whole point is that it can.
+ *
+ * Synchronous and observation-only, like the pause it wraps: the checkpoint
+ * records what is already known in-process (worktree path, recorded session id)
+ * and leaves sha / branch / dirty-state NULL rather than blocking the quit on an
+ * async git probe. A null is "not measured", which is true; a guess would not be.
  */
-function pauseOpenRuns(reason: string): void {
-  mcRecord('pauseOpenRuns', () => {
-    if (!persist.isOpen) return;
-    const runs = persist.runs;
-    for (const run of runs.activeRuns()) {
-      mcRecord(`pause ${run.run_id}`, () => {
-        runs.pause(run.run_id, {
-          reason,
-          checkpoint: {
-            worktreePath: run.worktree_path,
-            sessionId: mcRecord('lastSession', () => hive.lastSession(run.agent_id)) ?? run.session_id
-          }
-        });
-      });
-    }
-    ptyToRun.clear();
-  });
+function safeQuitGate(reason: string): SafePauseResult {
+  if (!persist.isOpen) {
+    // No database means no way to prove anything was parked. Refuse rather than
+    // let "we couldn't check" pass as "it's fine".
+    return {
+      ok: false, pausedRunIds: [], verified: false,
+      failures: [{ runId: '*', reason: 'the telemetry database is not open, so no pause can be proven' }],
+      chain: { ok: false, brokenAtSeq: -1, reason: 'not checked' }
+    };
+  }
+  try {
+    return persist.runs.safePauseAll({
+      reason,
+      checkpointFor: (run) => ({
+        worktreePath: run.worktree_path,
+        sessionId: (() => {
+          try { return hive.lastSession(run.agent_id); } catch { return run.session_id; }
+        })()
+      })
+    });
+  } catch (e) {
+    return {
+      ok: false, pausedRunIds: [], verified: false,
+      failures: [{ runId: '*', reason: e instanceof Error ? e.message : String(e) }],
+      chain: { ok: false, brokenAtSeq: -1, reason: 'not checked' }
+    };
+  }
 }
 
 /**
@@ -3812,7 +3836,16 @@ ipcMain.handle('history:search', (_evt, query: unknown, limit: unknown) =>
 // ─── IPC: quit confirmation ─────────────────────────────────────────────────
 /** Tear the harness down and quit. Shared by the hard "kill all & quit" path
  *  and the closing-time conclusion (after the god confirmed the floor saved). */
-function teardownAndQuit(): void {
+function teardownAndQuit(reason = 'app-quit'): SafePauseResult {
+  // FAIL-CLOSED. Nothing below this line runs unless every open run is proven
+  // parked in the database — not written, PROVEN, by reading it back. A refused
+  // quit leaves the PTYs, worktrees and sessions exactly as they are.
+  const gate = safeQuitGate(reason);
+  if (!gate.ok) {
+    console.error('[safe-quit] REFUSED — open runs could not be safely paused:',
+      gate.failures.map((f) => `${f.runId}: ${f.reason}`).join('; '));
+    return gate;
+  }
   allowQuit = true;
   // Each teardown step is best-effort: a throw here (e.g. a dying child or a
   // half-torn-down socket) must never abort the quit or pop a crash dialog.
@@ -3834,15 +3867,23 @@ function teardownAndQuit(): void {
   // else — it does not stop an agent, remove a worktree, discard untracked work
   // or force a commit, and it deliberately runs before killAll(), which
   // suppresses per-PTY teardown and is why worktrees survive a quit at all.
-  pauseOpenRuns('app-quit');
   try { persist.close(); } catch (e) { console.error('[quit] persist.close:', e); }
   try { hive.stopAllProxyBridges(); } catch (e) { console.error('[quit] stopAllProxyBridges:', e); }
   try { ptyManager.killAll(); } catch (e) { console.error('[quit] killAll:', e); }
   app.quit();
+  return gate;
 }
 ipcMain.handle('app:confirmClose', () => {
   closingTime.cancel(); // a hard quit overrides a closing time in progress
-  teardownAndQuit();
+  // The outcome goes BACK to the renderer. A refused quit has to be visible in
+  // the UI that asked for it — a console line is not an answer to a human who
+  // is about to close their laptop.
+  const outcome = teardownAndQuit();
+  return {
+    ok: outcome.ok,
+    pausedRunIds: outcome.pausedRunIds,
+    failures: outcome.failures
+  };
 });
 ipcMain.handle('app:cancelClose', () => {
   // The modal closes on the renderer side. The one thing main owes anybody here

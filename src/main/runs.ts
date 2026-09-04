@@ -166,6 +166,32 @@ export interface RunStoreOptions {
 
 export type ChainVerdict = { ok: true } | { ok: false; brokenAtSeq: number; reason: string };
 
+/** One run the safe-quit gate could not vouch for, and why. Named so the UI can
+ *  tell the human WHICH agent's work is not parked, not just that something
+ *  went wrong. */
+export interface SafePauseFailure {
+  runId: string;
+  reason: string;
+}
+
+export interface SafePauseResult {
+  /** True only when every open run was written AND read back from the DB. */
+  ok: boolean;
+  /** Runs proven paused. Empty on any failure — the batch is all-or-nothing. */
+  pausedRunIds: string[];
+  failures: SafePauseFailure[];
+  /** Whether the post-commit read-back ran and agreed. */
+  verified: boolean;
+  chain: ChainVerdict;
+}
+
+export interface SafePauseOptions {
+  reason: string;
+  /** Collect whatever is observable for this run. Allowed to throw — that is a
+   *  failed pause, and it takes the whole batch down with it. */
+  checkpointFor?: (run: RunRow) => Checkpoint;
+}
+
 /**
  * Deterministic JSON: object keys sorted at every depth, `undefined` dropped, so
  * two structurally equal payloads always hash identically. Without this the hash
@@ -274,6 +300,18 @@ export function applyRunSchema(db: BetterSqlite3.Database): void {
 /** Normalize "not supplied" and "explicitly unknown" to the same NULL. */
 function orNull<T>(v: T | null | undefined): T | null {
   return v === undefined ? null : v;
+}
+
+function message(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+/** Best effort at naming the run a batch died on: `pause()` puts the id in its
+ *  message. Falls back to `*` rather than blaming an arbitrary run — a wrong
+ *  name in a failure report is worse than an honest "one of these". */
+function failingRunId(e: unknown, candidates: readonly string[]): string {
+  const text = message(e);
+  return candidates.find((id) => text.includes(id)) ?? '*';
 }
 
 export class RunStore {
@@ -508,6 +546,127 @@ export class RunStore {
       });
     });
     return tx();
+  }
+
+  // ─── the safe-quit boundary ────────────────────────────────────────────────
+
+  /**
+   * Park every open run as ONE atomic batch, then read the result back out of
+   * the database before claiming success.
+   *
+   * This is the fail-closed half of the store, and it is deliberately unlike the
+   * observation paths. An ordinary telemetry write may fail quietly — a missing
+   * row is a gap in the record. A PAUSE may not: the human is being told their
+   * work is parked and it is safe to close the laptop. So this method's contract
+   * is "prove it", and the proof is a re-read, not the writer's own say-so.
+   *
+   * ATOMIC ON PURPOSE. A half-paused floor — one run parked, one failed, one
+   * never reached — is worse than none: it reads as partial progress while the
+   * record is inconsistent. Everything runs inside a single transaction (nested
+   * `pause()` calls become savepoints), so a failure anywhere rolls the lot back
+   * and "not safe" cleanly means "nothing was claimed".
+   *
+   * Runs already `paused` are left exactly as they are — re-pausing would
+   * overwrite an earlier, more specific reason with this one.
+   */
+  safePauseAll(opts: SafePauseOptions): SafePauseResult {
+    const failures: SafePauseFailure[] = [];
+    let targets: RunRow[] = [];
+    try {
+      targets = this.activeRuns();
+    } catch (e) {
+      return {
+        ok: false, pausedRunIds: [], verified: false,
+        failures: [{ runId: '*', reason: `could not list open runs: ${message(e)}` }],
+        chain: { ok: false, brokenAtSeq: -1, reason: 'not checked' }
+      };
+    }
+    if (targets.length === 0) {
+      return { ok: true, pausedRunIds: [], failures: [], verified: true, chain: this.verifyChain() };
+    }
+
+    const ids = targets.map((r) => r.run_id);
+    try {
+      const batch = this.db.transaction(() => {
+        for (const run of targets) {
+          try {
+            const checkpoint = opts.checkpointFor ? opts.checkpointFor(run) : {};
+            this.pause(run.run_id, { reason: opts.reason, checkpoint });
+          } catch (e) {
+            // Re-throw with the run named. Rolling back is not enough — whoever
+            // is told "you cannot quit" needs to know WHOSE work is unparked.
+            throw new Error(`run ${run.run_id}: ${message(e)}`);
+          }
+        }
+      });
+      batch();
+    } catch (e) {
+      // The transaction rolled back, so NOTHING is paused — including the runs
+      // that individually succeeded before the failure.
+      return {
+        ok: false, pausedRunIds: [], verified: false,
+        failures: [{ runId: failingRunId(e, ids), reason: message(e) }],
+        chain: this.verifyChain()
+      };
+    }
+
+    // Committed. Now disbelieve ourselves and read it back.
+    const verdict = this.verifySafePause(ids);
+    failures.push(...verdict.failures);
+    return {
+      ok: verdict.ok,
+      pausedRunIds: verdict.ok ? ids : [],
+      failures,
+      verified: verdict.ok,
+      chain: verdict.chain
+    };
+  }
+
+  /**
+   * Independent read-back: does the DATABASE agree that these runs are safely
+   * parked? Checks the run row, the checkpoint it points at, its pause event and
+   * the integrity of the log as a whole. Used by the quit gate and callable on
+   * its own, because "we wrote it" and "it is there" are different claims.
+   */
+  verifySafePause(runIds: readonly string[]): { ok: boolean; failures: SafePauseFailure[]; chain: ChainVerdict } {
+    const failures: SafePauseFailure[] = [];
+    for (const runId of runIds) {
+      try {
+        const run = this.getRun(runId);
+        if (!run) { failures.push({ runId, reason: 'run row is missing' }); continue; }
+        if (run.status !== 'paused') {
+          failures.push({ runId, reason: `status is "${run.status}", expected "paused"` });
+          continue;
+        }
+        if (!Number.isInteger(run.checkpoint_event_seq)) {
+          failures.push({ runId, reason: 'checkpoint_event_seq is not set' });
+          continue;
+        }
+        const checkpoint = this.db.prepare(
+          `SELECT seq, run_id, event_type FROM events WHERE seq = ?`
+        ).get(run.checkpoint_event_seq) as { seq: number; run_id: string | null; event_type: string } | undefined;
+        if (!checkpoint || checkpoint.event_type !== 'checkpoint.created' || checkpoint.run_id !== runId) {
+          failures.push({ runId, reason: `checkpoint.created event ${run.checkpoint_event_seq} is missing or mismatched` });
+          continue;
+        }
+        const paused = this.db.prepare(
+          `SELECT COUNT(*) AS n FROM events WHERE run_id = ? AND event_type = 'run.paused'`
+        ).get(runId) as { n: number };
+        if (!paused || paused.n < 1) {
+          failures.push({ runId, reason: 'run.paused event is missing' });
+          continue;
+        }
+      } catch (e) {
+        failures.push({ runId, reason: `verification failed: ${message(e)}` });
+      }
+    }
+    // A run can look perfect while the log around it has been rewritten, so the
+    // chain is part of the same verdict rather than a separate nicety.
+    const chain = this.verifyChain();
+    if (!chain.ok) {
+      failures.push({ runId: '*', reason: `event hash chain is broken at seq ${chain.brokenAtSeq}: ${chain.reason}` });
+    }
+    return { ok: failures.length === 0, failures, chain };
   }
 
   // ─── events ────────────────────────────────────────────────────────────────

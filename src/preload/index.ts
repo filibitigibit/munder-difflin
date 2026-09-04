@@ -955,7 +955,15 @@ const api = {
     ipcRenderer.on('app:closeRequested', listener);
     return () => ipcRenderer.removeListener('app:closeRequested', listener);
   },
-  confirmClose: (): Promise<void> => ipcRenderer.invoke('app:confirmClose'),
+  /** Ask to quit. Returns the SAFE-QUIT outcome: the app only closes when every
+   *  open run was checkpointed, written and read back from the telemetry DB. A
+   *  refused quit comes back `ok:false` with the runs that could not be parked,
+   *  and the app is still running. */
+  confirmClose: (): Promise<{
+    ok: boolean;
+    pausedRunIds: string[];
+    failures: Array<{ runId: string; reason: string }>;
+  }> => ipcRenderer.invoke('app:confirmClose'),
   cancelClose: (): Promise<void> => ipcRenderer.invoke('app:cancelClose'),
 
   // ─── Power / wake (auto-revive wedged PTYs after sleep/lock) ────────────────

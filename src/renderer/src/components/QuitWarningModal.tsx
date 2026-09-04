@@ -12,24 +12,38 @@ export interface ClosingTimeState {
   error?: string;
 }
 
+/** A quit the harness REFUSED because it could not prove every open run was
+ *  safely paused. Shown in place of a silent exit. */
+export interface SafeQuitRefusal {
+  failures: Array<{ runId: string; reason: string }>;
+}
+
 export interface QuitWarningModalProps {
   ptyCount: number;
   /** Non-null while the closing-time protocol runs — switches the dialog into
    *  the "wrapping up the floor" progress view. */
   closing?: ClosingTimeState | null;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<{ ok: boolean; failures: Array<{ runId: string; reason: string }> } | void> | void;
   /** Start the graceful shutdown (the third button). */
   onClosingTime?: () => void;
 }
 
 export function QuitWarningModal({ ptyCount, closing, onCancel, onConfirm, onClosingTime }: QuitWarningModalProps) {
   const [busy, setBusy] = useState(false);
+  const [refused, setRefused] = useState<SafeQuitRefusal | null>(null);
 
   const confirm = async () => {
     setBusy(true);
-    await onConfirm();
-    // No need to clear busy — the app is quitting.
+    setRefused(null);
+    const outcome = await onConfirm();
+    // A refused quit RETURNS. Clearing busy matters here precisely because the
+    // app did NOT quit — leaving the button stuck on "killing..." would look
+    // like a hang instead of the deliberate refusal it is.
+    if (outcome && outcome.ok === false) {
+      setRefused({ failures: outcome.failures ?? [] });
+      setBusy(false);
+    }
   };
 
   const inClosingTime = !!closing && closing.phase !== 'error';
@@ -180,6 +194,26 @@ export function QuitWarningModal({ ptyCount, closing, onCancel, onConfirm, onClo
                     color: 'var(--cth-ink-900)'
                   }}>
                     {closing.error ?? 'Closing time could not start.'}
+                  </div>
+                )}
+
+                {refused && (
+                  <div style={{
+                    padding: 8,
+                    background: 'var(--cth-coral-light)',
+                    boxShadow: 'inset 0 0 0 1px var(--cth-ink-100)',
+                    fontSize: 12, lineHeight: '18px',
+                    color: 'var(--cth-ink-900)'
+                  }}>
+                    <strong>Quit refused — the floor is NOT safely paused.</strong>
+                    <div style={{ marginTop: 4 }}>
+                      Nothing was closed and no work was touched. These runs could not be checkpointed:
+                    </div>
+                    <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
+                      {refused.failures.map((f) => (
+                        <li key={f.runId}><code>{f.runId}</code> — {f.reason}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 
