@@ -294,3 +294,154 @@ Kararlar **DEĞİŞTİRİLMEDİ**; yalnız bu turda ölçülen olgu eklenmiştir
 
 🔴 **GATE 2'nin durumu bu turda DEĞİŞMEZ.** Hiçbir hücre dolduruldu,
 hiçbir karar verildi. Bu dosya yalnız **olgu** üretir.
+
+---
+
+# T-18 — İZOLASYON YÖNETİCİSİ: `git_worktree_path` ÜRETİM ZİNCİRİ
+
+## 🔴 BU BÖLÜM OLGU KAYDIDIR
+
+Hiçbir satır bir hücrenin **GEÇERLİ** veya **GEÇERSİZ** olduğunu
+**SÖYLEMEZ**. Normatif karar **AYRI bir turda CTO tarafından** verilir.
+
+**ÖLÇÜM EKSENİ: BEŞ `failed` SINIFI.** Repo bağlamı (bare / submodule /
+normal) eksen **DEĞİLDİR**; yalnız bir failure senaryosunu kurmak için
+kullanıldığında **yardımcı fixture bağlamıdır**.
+
+## ÜRETİM ZİNCİRİ (kod okunarak çıkarıldı, `src/main/index.ts:2795-2818`)
+
+| adım | ne yapar | ZORUNLU? | git kusuruna açık? | üretim yüzeyinde? |
+|---|---|---|---|---|
+| **S1** `isRepo(opts.cwd)` — 2795 | `rev-parse --is-inside-work-tree`; `false` → izolasyon bloğu **hiç çalışmaz** | **EVET** | **EVET** | **EVET** |
+| S2 `readConfig().harnessHome` + `join(…,'worktrees')` — 2798 | saf string | EVET | hayır | hayır |
+| S3 slugify + `join(wtRoot, seg)` — 2803-04 | **alanın DEĞERİNİ hesaplayan adım** | EVET | hayır | hayır |
+| S4 kaçış guard'ı — 2805 | escape → `else`'e girilmez | EVET | hayır | hayır |
+| S5 `getBranch(origCwd)` — 2808 | başarısızlıkta `baseBranch='main'`e düşer | **HAYIR** (fallback) | evet | hayır (bloke etmez; S6'yı besler) |
+| **S6** `addWorktree(origCwd, wtPath, baseBranch)` — 2810 | iki `runGit`; **ikisi de düşerse `wt.ok=false`** | **EVET** | **EVET** | **EVET** |
+| S7 `worktreePaths.set(opts.id, wtPath)` — 2813 | değeri **KABUL/KAYIT** adımı | EVET | hayır | hayır |
+
+**ÜRETİM YÜZEYİ (zorunlu ∩ git'e açık) = S1 + S6.**
+
+🔴 **TEK ADIM MODELİ REDDEDİLDİ — koddan doğrulandı.** Yol string'i S3'te
+hesaplanır, ama alan ancak **`wt.ok` doğruysa** kabul edilir: `opts.cwd` ve
+`worktreePaths.set` **`if (wt.ok)` bloğunun İÇİNDEDİR** (2811-2813). Alanın
+değeri dışarıya yalnız `worktreePaths.get(opts.id)` üzerinden verilir
+(3092, 3101). Dolayısıyla **S6 zorunlu bir üretim adımıdır** ve git
+kusurları alan üretimini **engeller**.
+
+## ÖLÇÜM YÖNTEMİ VE SINIRI
+
+`src/main/git.ts`'ten **GERÇEK** `isRepo` / `getBranch` / `addWorktree`
+fonksiyonları `loadTs` ile yüklendi ve **değiştirilmeden** çağrıldı.
+
+🔴 **KAPSAM SINIRI:** `src/main/index.ts`'in kapılama mantığı (2795-2818)
+**OKUNDU, KOŞULMADI** — Electron uygulaması başlatılmadı. "ALAN ÜRETİLDİ
+Mİ" satırı bu nedenle **KOD OKUMASINDAN TÜRETİLMİŞ** bir hükümdür
+(`S1 && S6`), yürütülmüş bir gözlem **DEĞİLDİR**. `readConfig()` hiç
+çağrılmadı; `wtPath` doğrudan scratch altından verildi.
+
+## TABAN (POZİTİF KONTROL) — sağlıklı repo
+
+```
+S1 isRepo(cwd)      -> true    (36ms)
+S5 getBranch(cwd)   -> {"current":"main","detached":false}  -> baseBranch=main
+S6 addWorktree(...) -> {"ok":true}   (144ms)
+ALAN URETILDI MI    -> true
+```
+Her failure koşumu bu tabandan **YALNIZ enjekte edilen kusur kadar**
+farklıdır.
+
+## BEŞ SINIF
+
+### 1 · not-a-repo — **ÜRETİLDİ** (etkilenen adım: **S1**)
+Yöntem: `cwd` = git deposu **olmayan** dizin (`…/repos/plaindir`).
+```
+S1 isRepo(cwd)      -> false   (31ms)
+S5 getBranch(cwd)   -> {"error":"fatal: not a git repository (or any of the parent directories): .git"}
+S6 addWorktree(...) -> {"ok":false,"error":"fatal: not a git repository (or any of the parent directories): .git"}
+ALAN URETILDI MI    -> false
+```
+**NOT:** üretimde S1 `false` olduğunda blok hiç girilmez, yani S6 hiç
+çağrılmaz. Sonda S6'yı yine de gözlem amaçlı çağırdı.
+
+### 2 · command-nonzero — **ÜRETİLDİ** (etkilenen adım: **S6**)
+Yöntem: hedef `wtPath` **zaten var** → her iki `git worktree add` de sıfır dışı.
+```
+S1 isRepo(cwd)      -> true    (28ms)
+S5 getBranch(cwd)   -> {"current":"main","detached":false}  -> baseBranch=main
+S6 addWorktree(...) -> {"ok":false,"error":"Preparing worktree (checking out 'main')\nfatal: 'D:/mc-scratch/t18/home/worktrees/agent-ok' already exists"}   (92ms)
+ALAN URETILDI MI    -> false
+```
+**TEMİZ ATIF:** S1 geçti, yalnız S6 düştü.
+
+### 3 · git-missing — **ÜRETİLDİ** (etkilenen adım: **S1 + S6**)
+Yöntem: PATH yalnız node dizinine daraltıldı (`command -v git` → exit 1).
+🔴 `.cmd` ile gölgeleme **DENENMEDİ** (ölçüldü: `spawn` `shell:true`
+olmadan `.cmd` çözmez).
+```
+S1 isRepo(cwd)      -> false   (5ms)
+S5 getBranch(cwd)   -> {"error":"spawn git ENOENT"}
+S6 addWorktree(...) -> {"ok":false,"error":"spawn git ENOENT"}   (4ms)
+ALAN URETILDI MI    -> false
+```
+
+### 4 · timeout — **ÜRETİLDİ** (etkilenen adım: **S1 + S6**)
+Yöntem: `git.exe` = `node.exe` kopyası; cwd içinde `rev-parse` ve
+`worktree` adlı scriptler `Atomics.wait` ile sonsuza dek bloke oluyor.
+`runGit`'in kendi **8000 ms → SIGKILL**'i devreye giriyor (`git.ts:13-15`).
+```
+S1 isRepo(cwd)      -> false   (8022ms)
+S5 getBranch(cwd)   -> {"error":"git exited null"}
+S6 addWorktree(...) -> {"ok":false,"error":"git exited null"}   (16054ms — iki çağrı × 8s)
+ALAN URETILDI MI    -> false     TOPLAM 32111ms
+```
+**OLGU:** hata metni `git exited null` — `command-nonzero` ile
+**ayırt edilemez** (bkz. AYIRT EDİLEMEZLİK SINIRI).
+
+### 5 · unusable-output — **ÜRETİLDİ** (etkilenen adım: **S1**)
+Yöntem: aynı shim; `rev-parse` ve `worktree` scriptleri `process.exit(0)`
+— exit 0, stdout **boş**.
+```
+S1 isRepo(cwd)      -> false   (1064ms)   ← stdout boş; isRepo `stdout.trim()==='true'` ister
+S5 getBranch(cwd)   -> {"current":"","detached":false}   ← BOŞ STRING dal adı
+S6 addWorktree(...) -> {"ok":true}    (77ms)   ← S6 stdout TÜKETMİYOR, exit 0 yeter
+ALAN URETILDI MI    -> false
+```
+**OLGU — İKİ ADIM AYRIŞIYOR:** `unusable-output` **S1'i düşürür ama S6'yı
+düşürmez**. Hücreyi besleyen şey S1'in zorunlu bir üretim adımı olmasıdır.
+**KOMŞU OLGU:** `getBranch` exit 0 + boş çıktıyı **başarı** sayıp
+`current: ""` döndürdü — boş string bir dal adı olarak dışarı sızdı. Bu
+`git_branch` alanına aittir, `git_worktree_path`'e değil; alan ölçümü
+**SAYILMAZ**.
+
+## M11 ÖN KOŞULU
+
+Tüm fixture'lar ve `wtRoot` **`D:/mc-scratch/t18/`** altındadır. Üretilen
+tek worktree: `D:/mc-scratch/t18/home/worktrees/agent-ok` (taban koşumu).
+
+**SİSTEM ÇALIŞTIRILABİLİRİ İSTİSNADIR** ve kasıtlıdır:
+```
+where git -> C:\Program Files\Git\mingw64\bin\git.exe
+             C:\Program Files\Git\cmd\git.exe
+PATH'te çözümlenen: /mingw64/bin/git   ·   git version 2.52.0.windows.1
+```
+Config/HOME izolasyonu: scratch dışı config kaynağı sayısı **0**
+(`grep -c '^file:[A-Z]:'`). `HOME`/`USERPROFILE` scratch'e sabitlendi.
+
+🔴 **CANLI HIVE'A YAZILMADI — doğrulandı:** ölçüm sonrası
+`C:\Users\EMRAH\HarnessAgents\hive` durumu ` M log.jsonl` (+5/−0),
+IS 0 tabanıyla **AYNI**; hive altında `worktrees` dizini
+**OLUŞMADI** (`No such file or directory`).
+
+## SAYIM
+
+| sonuç | hücre |
+|---|---|
+| **BESLEYİCİ OLGU ÜRETİLDİ** | **5** |
+| **BU TURDA ÜRETİLEMEDİ** | **0** |
+
+Beş hücrenin beşi de: `git_worktree_path` × (`git-missing` ·
+`command-nonzero` · `timeout` · `not-a-repo` · `unusable-output`).
+
+🔴 **GATE 2 BU TURDA DEĞİŞMEZ** — hücreler doldurulmadı, karar verilmedi.
+Bu bölüm yalnız **olgu** üretir.
