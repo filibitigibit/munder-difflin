@@ -207,6 +207,49 @@ BU BÖLÜNME BİR TASARIM TERCİHİ DEĞİL, ÖLÇÜLEN BİR SINIRDIR.
 CHECK'in Invaryant B'yi uygulayamaması, Invaryant A'yı
 uygulayamadığı anlamına GELMEZ.
 
+### ENFORCEMENT KATMANI SINIRI
+
+M4'ün DB katmanı YALNIZ YAPISAL DURUM GRAMERİNİ uygular:
+
+- durum değeri izinli alfabede mi (CHECK)
+- durum ile değer kombinasyonu izinli mi: `measured` → değer DOLU,
+  diğerleri → değer NULL (CHECK)
+- `measured_detached` yalnız `git_branch_status`'ta mı (CHECK)
+- durum ve değer bağlaşımı: BEFORE UPDATE trigger, OLD → NEW geçişini
+  görür ve EŞLEŞMEMİŞ alan değişimini reddeder (trigger)
+
+**BAĞLAŞIMIN DOĞRU İFADESİ — ÖLÇÜLDÜ.** Bağlaşım "aynı transaction"
+DEĞİLDİR. Trigger'ın uyguladığı şey şudur: aynı satırın TEK İZİNLİ
+OLD→NEW güncelleme geçişinde durum ve değer BİRLİKTE değişir.
+Bağımsız durum-tek veya değer-tek UPDATE REDDEDİLİR — iki ayrı UPDATE
+aynı transaction içinde yapılsa bile İLK GEÇİŞ yasadışı olduğu için
+düşer. **"Aynı transaction" ifadesi bu davranışı tarif etmez ve
+enforcement kilidi içinde KULLANILMAZ.**
+(Ölçüm: sonda turu, SQLite 3.49.2 / better-sqlite3 11.10.0, scratch
+in-memory DB, tek alan `git_base_sha`; beş alanda ÖLÇÜLMEDİ.)
+
+**SEBEP-ALAN UYGUNLUĞU DB'DE ZORLANMAZ.** `failed(<sebep>)` ve
+`not_applicable(<sebep>)` ifadelerinin HANGİ ALANDA anlamlı olduğu
+PRODUCER/UYGULAMA SEMANTİĞİDİR ve FIXTURE DİLİMİNDE tanımlanacaktır.
+DB, `git_base_sha` alanına `not_applicable(no-isolation)` yazılmasını
+YAPISAL olarak kabul eder; o yazmanın ANLAMLI olup olmadığını DB
+DEĞİL producer belirler.
+
+**SONUÇ:** sebep-alan eşlemesinin tanımsız olması, DİLİM 1'in
+şemasını, CHECK ifadesini, trigger'ını veya göçünü DEĞİŞTİRMEZ.
+Bu hüküm YALNIZ bu madde yürürlükteyken geçerlidir; eşlemenin ileride
+DB'de zorlanmasına karar verilirse şema tasarımı YENİDEN AÇILIR.
+
+**"AYNI TRANSACTION" İFADESİNİN OKUNMASI.** Bu ifade sözleşmede iki
+yerde geçer: M4 madde girişinde ("durum ve değer AYNI kayıtta, AYNI
+transaction'da yazılır") ve ENFORCEMENT BÖLÜNMESİ'nde ("tek başına
+YETERSİZDİR"). Madde girişindeki ifade yasal yolu doğru tarif eder
+(tek bağlaşık UPDATE tek transaction'dadır) ama YETERLİ KOŞUL
+DEĞİLDİR — bunu ENFORCEMENT BÖLÜNMESİ zaten söylüyor. Tarihsel metin
+DEĞİŞTİRİLMEDİ; enforcement kilidi bu bölümdür ve mekanizmayı OLD→NEW
+geçişi olarak tarif eder. Çelişki YOKTUR: giriş cümlesi eksik bir
+tarif, bu bölüm tam tarifidir.
+
 ### DURUM TEMSİLİ
 
 Durum tek TEXT sütununda tutulur; sebep durum string'inin içinde
@@ -533,6 +576,53 @@ BEKLENMEZ.
 
 **ÖLÇÜLEN GEREKÇE:** bu belgeye yazılan bir sözlük, yazıldığı turda
 M4 KAPSAM ile karşılaştırılmadığı için aynı turda çelişki üretti.
+
+---
+
+## AÇIK BORÇ — SEBEP-ALAN EŞLEMESİ
+
+Alan başına 11 durum × 5 alan = **55 hücrelik** bir uzay vardır.
+
+### TANIMLI — 18 hücre
+
+| durum | hücre | kaynak |
+|---|---|---|
+| `measured` | 5 | her alan için geçerli (D-01, P-01..P-04, F-06) |
+| `never_measured` | 5 | göç durumu, beş alanın hepsi (M10 GÖÇ DAVRANIŞI, G-12) |
+| `measured_detached` | 5 | **HEPSİ TANIMLI:** `git_branch_status` için GEÇERLİ, diğer dört alan için GEÇERSİZ (M4 tablosu, M13, W-21) |
+| `not_applicable` | 3 | `git_worktree_path` × `no-isolation` GEÇERLİ (M3); `git_toplevel` ve `git_pty_cwd` × `no-isolation` GEÇERSİZ (P-03) |
+
+### TANIMSIZ — 37 hücre
+
+| durum | hücre | not |
+|---|---|---|
+| `not_applicable` | 12 | 15'in 3'ü sınıflandırıldı |
+| `failed` | 25 | hiç sorgulanmadı |
+
+**55 − 18 = 37.** Bu muhasebe AÇIKÇA yazılır; "`measured_detached`
+yalnız branch için" cümlesi tek başına okunursa yalnız BİR hücrenin
+tanımlı olduğu izlenimi verir — oysa beş hücrenin beşi de tanımlıdır
+(biri GEÇERLİ, dördü GEÇERSİZ).
+
+### BU HÜCRELER ÖLÇÜLECEK ŞEY DEĞİL, KARAR VERİLECEK ŞEYDİR
+
+Daha kesin ifade: hücrenin NORMATİF SONUCU ölçülmez; hücreyi BESLEYEN
+OLGU ölçülür, sonra CTO kararı verilir.
+
+Örnek: "bare repoda `git rev-parse HEAD` çalışır" ölçülebilir. Ama
+bundan "`git_base_sha` × `bare-repo` `not_applicable` GEÇERSİZDİR"
+hükmü ÇIKMAZ. `not_applicable` "teknik olarak ölçülemez" demek değil,
+"bu kavram bu bağlamda uygulanmaz" demektir — bu NORMATİF bir
+yargıdır.
+
+**Her hücre İKİ ADIM gerektirir: ölçüm, sonra karar.**
+
+### ÇALIŞAN BİR GÖÇ BU HÜCRELERİ ERİTMEZ
+
+Göç mekanik davranış hakkında bilgi üretir; hücreler semantik
+karardır. DİLİM 1'in kodu yazıldığında bu borç AYNEN durur.
+
+**Kapatma şartı:** GATE 2'nin giriş koşuludur.
 
 ---
 

@@ -39,32 +39,78 @@ yükümlülüğüdür. Bunlar plandan silinmez ama bir dilimde KOŞMAZLAR.
 KALEMİ olarak görünür — **"gate'i etkilemiyor" ifadesi zamanla
 "yapılmasına gerek yok"a DÖNÜŞEMEZ.**
 
-### GATE ÖLÇÜTÜ
+### GATE ÖLÇÜTÜ — ÜÇ KADEMELİ
 
-Implementation kapısı **İKİ ŞARTA** bağlıdır:
+ÜÇ AYRI GATE VARDIR VE BİRBİRİNİN YERİNE GEÇMEZ.
+**Adlandırma disiplini:** bir gate ya BİLİNEN ENGELLERİ ölçer ya
+SEMANTİK TAMLIĞI. İkisi aynı cümlede karıştırılmaz.
+
+#### GATE 1 — DİLİM 1 IMPLEMENTATION  (BİLİNEN ENGEL GATE'İ)
+
+Şartlar:
 
 | şart | ölçüm |
 |---|---|
-| `ATANAMADI` (sınıflandırılamadı vaka) | **= 0** olmalı |
-| `AÇIK ÇELİŞKİ` (ölçülmüş ve çözülmemiş) | **= 0** olmalı |
+| `ATANAMADI` | **= 0** |
+| KAYITLI/SINIFLANMIŞ AÇIK ÇELİŞKİLER ∩ `DILIM 1` | **BOŞ** |
 
-**Kapı AÇIK ancak ve ancak İKİSİ DE sıfırsa.**
+**HÜKÜM SINIRI:** Gate 1'in açılması, DİLİM 1'de KEŞFEDİLMEMİŞ
+semantik çelişki bulunmadığını KANITLAMAZ. Yalnız mevcut KAYITLI
+çelişkilerin DİLİM 1'i bloke etmediğini gösterir. Gate 1'in anlamı:
+"elimizde bugün DİLİM 1 kodunu yasaklayan BİLİNEN bir engel yok."
+**Bu, "DİLİM 1 kusursuzdur" DEMEK DEĞİLDİR.**
 
-`DILIM: YOK` (bilinerek koşulmayan yükümlülük) kapıyı ETKİLEMEZ.
-Bir kalemi `YOK` yapmak, sınıflandıramamanın örtüsü olarak
+**DURUM (v3.8 ölçümü): KAPALI.** Kayıtlı açık çelişki C-07'nin dilimi
+`DILIM 1`'dir, dolayısıyla kesişim BOŞ DEĞİLDİR. Ayrıntı ve dilim
+yeniden değerlendirme sorusu tur raporundadır.
+
+Kapsam: şema göçü, M13'ün 11 sütunu + M1'in `checkpoint_sha_source`,
+`measured`, `never_measured`, M4 yapısal CHECK, OLD→NEW trigger,
+GRUP G ve GRUP W vakaları.
+
+#### GATE 2 — FIXTURE / PRODUCER DİLİMİ  (BİLİNEN ENGEL GATE'İ)
+
+Şartlar: GATE 1 açık · sebep-alan eşlemesi tanımlı
+(`not_applicable` 15 hücre + `failed` 25 hücre = **40 hücre**).
+
+Bekleyen vakalar: C-07, D-06, D-07 ve aynı bağımlılıktaki diğer
+vakalar.
+
+**DURUM: KAPALI.**
+
+**KAPSAM NOTU:** bu şart bugün 40 hücrenin TAMAMINI istiyor. İleride
+producer davranışı ölçüldüğünde yalnızca producer'ın ÜRETEBİLDİĞİ
+hücrelerle daraltılabilir — ama bu bir ÖLÇÜM gerektirir; bugün
+daraltmak VARSAYIM olurdu.
+
+#### GATE 3 — FAZ 1B FINAL  (SEMANTİK TAMLIK GATE'İ)
+
+Şartlar: GATE 1 ve GATE 2 açık · tüm belirsizlikler kapalı.
+
+**DURUM: KAPALI.**
+
+**37 tanımsız hücre çözülmeden "Faz 1B tamamlandı" DENMEZ.**
+
+---
+
+**GATE 1'in açılması Faz 1B'nin kapandığı ANLAMINA GELMEZ.**
+**Kod yazılması borcu eritmez.**
+
+`DILIM: YOK` (bilinerek koşulmayan yükümlülük) hiçbir gate'i
+ETKİLEMEZ. Bir kalemi `YOK` yapmak, sınıflandıramamanın örtüsü olarak
 KULLANILAMAZ; gerekçesi vakanın metninde yazılır.
 
 Bunların yanında **BİR GÖRÜNÜRLÜK METRİĞİ** raporlanır:
 
 > **DENETLENMEMİŞ BAĞ sayısı** (denetlenen / 66)
 
-Bu metrik **GATE ŞARTI DEĞİLDİR** ve kapıyı TEK BAŞINA KAPATMAZ.
-Sıfıra inmesi BEKLENMEZ. Ama her turda YAZILIR; görünmez kalması
-YASAKTIR.
+Bu metrik **HİÇBİR GATE'İN ŞARTI DEĞİLDİR** ve hiçbir kapıyı TEK
+BAŞINA KAPATMAZ. Sıfıra inmesi BEKLENMEZ. Ama her turda YAZILIR;
+görünmez kalması YASAKTIR.
 
-**"Kapı açık" ifadesi "sözleşme hazır" ANLAMINA GELMEZ.** Gate
-planlanabilirliği ve BİLİNEN çelişkilerin yokluğunu ölçer;
-denetlenmemiş bağın içinde ne olduğunu ÖLÇMEZ.
+**BELİRSİZLİK ÇELİŞKİDEN FARKLI BİR SINIFTIR VE HİÇBİR GATE ONU
+ÖLÇMEZ.** Belirsiz kalan kalemler her turda gate sonucundan AYRI
+raporlanır; 37 tanımsız hücre bu listededir.
 
 **DILIM ETİKETİNİN ANLAMI — YÜRÜTME BİLGİSİDİR, EVREN DEĞİLDİR.**
 Dilim ataması vakanın NEREDE koşacağını söyler. Vakanın kanıtladığı
