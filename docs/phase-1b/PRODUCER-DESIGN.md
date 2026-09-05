@@ -155,3 +155,135 @@ hiçbir tek ana karşılık gelmez.
 M9'un metni tek bir "ölçüm anı"ndan söz eder (`CONTRACT.md:488-491`);
 birden çok alanın farklı anlarda ölçülmesinden **hiç bahsetmez**. Bu
 sessizlik bu turda **doldurulmadı**; hüküm icat edilmedi.
+
+---
+
+# YENİDEN ÖLÇÜM VE M6 KODLAMA
+
+## 🔴 BU BÖLÜM OLGU KAYDIDIR
+
+Hiçbir satır bir **temsil SEÇİMİNİ** söylemez. Seçim **CTO'nundur**.
+🔴 Tasarıma bağlı hiçbir sayı bu bölümde **ÖLÇÜM olarak** yazılmaz.
+
+## SORU 1 — EŞİT İKİNCİ SNAPSHOT NEYİ KANITLAR
+
+Beş alan için ABA senaryoları scratch'te **gerçek git** ile koşuldu
+(`D:/mc-scratch/aba/`, izole `HOME`/config).
+
+| # | alan / eksen | t1 | ara işlem | t2 | eşit mi | ABA körlüğü |
+|---|---|---|---|---|---|---|
+| 1 | `git_base_sha` | `54a0b244…` | yeni commit → `d65d3185…` → `reset --hard` | `54a0b244…` | **EVET** | **MÜMKÜN** |
+| 2A | `git_branch` — **eksen A** | `main` | `feat`'e geç → `main`'e dön | `main` | **EVET** | **MÜMKÜN** |
+| 2B | `git_branch` — **eksen B** | `main` (→ `54a0b244…`) | `main` yeni commit'e ilerledi | `main` (→ `3e01dd36…`) | **EVET** | 🔴 **MÜMKÜN — ve daha ağır**: operasyon yalnız ADI döndürür, hedefi HİÇ göstermez |
+| 3 | `git_toplevel` | `D:/mc-scratch/aba/r1` | repo silindi, aynı yola yeniden kuruldu | aynı | **EVET** | **MÜMKÜN** |
+| 4 | `git_pty_cwd` | `…/aba/d1` | dizin silindi, aynı adla yeniden oluşturuldu | aynı | **EVET** | **MÜMKÜN** |
+| 5 | `git_worktree_path` | `D:/mc-scratch/aba/wt-agent` | worktree kaldırıldı, AYNI YOLA yenisi (`agent/two`) kuruldu | aynı | **EVET** | **MÜMKÜN** |
+
+**BEŞ ALANIN BEŞİNDE DE ABA KÖRLÜĞÜ MÜMKÜN.**
+
+**İki eşit snapshot'ın KANITLAYAMADIĞI şey (alan alan):**
+`git_base_sha` HEAD'in pencerede başka bir commit'e gidip dönmediğini ·
+`git_branch` (A) dalın değişip dönmediğini, **(B) dalın işaret ettiği
+commit'in değişmediğini** · `git_toplevel` reponun aynı repo olduğunu ·
+`git_pty_cwd` dizinin aynı dizin olduğunu · `git_worktree_path` aynı yolda
+aynı worktree'nin durduğunu.
+
+## HEDEF KİMLİĞİ AYIRT EDİCİ ADAYLARI (ölçüldü)
+
+| aday | alan | bugün ulaşılabilir mi | ham |
+|---|---|---|---|
+| `.git` **inode** | `git_toplevel` | **EVET** | `1688849861180530` → `1970324837891185` (değer aynıyken **değişti**) |
+| dizin **inode** | `git_pty_cwd` | **EVET** | `2814749768023186` → `3096224744733842` |
+| `.git` dosyası **inode** | `git_worktree_path` | **EVET** | `1688849861180581` → `1970324837891239` |
+| `worktree list --porcelain` **branch** | `git_worktree_path` | **EVET** | `refs/heads/agent/one` → `refs/heads/agent/two` |
+| **gitdir işaretçisi** (`.git` içeriği) | `git_worktree_path` | **EVET ama AYIRT ETMİYOR** | iki uçta da `gitdir: …/worktrees/wt-agent` — yönetim dizini adı yol tabanından türediği için **DEĞİŞMEDİ** |
+| `rev-parse HEAD` (dalın hedefi) | `git_branch` eksen B | **EVET** | `54a0b244…` → `3e01dd36…` |
+| HEAD **reflog** | `git_base_sha` | **BULUNAMADI** (bu turda sorgulanmadı) | — |
+
+🔴 **gitdir işaretçisi bir ayırt edici DEĞİLDİR** — ölçüldü, aynı kaldı.
+
+## YENİDEN ÖLÇÜMÜN KANIT GÜCÜ
+
+- **Fark bulunursa:** o alanda pencerede bir değişim olduğu **PROVEN** olur
+  → M9'un "yarış mümkün" ucu.
+- **Fark bulunmazsa:** yarışsızlık **PROVEN OLMAZ**. Beş alanın beşinde de
+  ABA körlüğü ölçülerek gösterildi.
+- **ARA DURUM:** fark yok **ve** hedef-kimliği ayırt edicisi de
+  ölçülmemişse, sonuç **"değişim gözlenmedi"**dir — *"değişim olmadı"*
+  değil.
+
+## SORU 2 — RACE SONUCU MEVCUT GRAMERDE TEMSİL EDİLEBİLİR Mİ
+
+**M9/M6 ÇELİŞKİSİ — HAM KANIT** (üretim şeması scratch in-memory DB'ye
+uygulandı; üretim şemasına dokunulmadı):
+
+```
+bes durum alani : measured · measured · measured · measured · measured
+provenance_complete -> 1
+```
+
+M9 bu durumda run'ın `provenance_complete=false` taşımasını ister; **M6
+mekanik olarak 1 üretir.** Çelişki ölçüldü.
+
+**11 DURUMUN provenance_complete ETKİSİ (ölçüldü):**
+`measured_detached`→1 · `not_applicable(no-isolation)`→1 ·
+`never_measured`→0 · beş `failed(*)`→0 · `not_applicable(bare-repo)`→0 ·
+`not_applicable(submodule)`→0.
+*(`measured`'ı tek başına yazma denemesi bağlaşım trigger'ınca reddedildi —
+bu trigger'ın doğru çalışmasıdır, bir kusur değil.)*
+
+**MEVCUT 11 DURUMDAN HANGİSİ UYGUN — HER BİRİ ADIYLA:**
+
+| durum | uygun mu | neden |
+|---|---|---|
+| `measured` | **HAYIR** | ölçüm başarılı oldu der; yarışta operasyon **başarılıydı**, sorun penceredir. Ayrıca pc=1 üretir |
+| `measured_detached` | **HAYIR** | detached HEAD'e özgü, dal alanına özel; yarışla ilgisiz |
+| `never_measured` | **HAYIR** | "ölçüm penceresi geçmişti, hiç denenmedi" der; yarışta ölçüm **DENENDİ** |
+| `failed(git-missing)` … `failed(unusable-output)` (5) | **HAYIR** | beşi de ölçüm operasyonunun **teknik başarısızlığını** adlandırır; yarışta operasyon **sıfır döndü** |
+| `not_applicable(no-isolation|bare-repo|submodule)` (3) | **HAYIR** | kavramın uygulanamazlığını der; yarış kavramı uygulanamaz **KILMAZ** |
+
+🔴 **ON BİR DURUMUN HİÇBİRİ UYGUN DEĞİLDİR.** Hiçbiri "yakın sayılır"
+diye seçilmedi.
+
+## TEMSİL SEÇENEKLERİ (🔴 SEÇİM YAPILMADI)
+
+| # | seçenek | (i) **BUGÜNKÜ TEMAS** — mekanik sayım | (ii) **DEĞİŞECEK/YENİ TEST** |
+|---|---|---|---|
+| **S1** | M5'e yeni bir `failed` sebebi (ör. `race-detected`) | **27** test M4 alfabesine/CHECK ifadesine temas ediyor | 🔴 **ÖLÇÜLMEDİ (tasarıma bağlı)** |
+| **S2** | M6 türetme kuralına yeni bir girdi alanı | **10** test `provenance_complete` türetmesine temas ediyor | 🔴 **ÖLÇÜLMEDİ (tasarıma bağlı)** — yeni girdi alanının ne olduğu TASARLANMADI |
+| **S3** | Ayrı bir sütun (race durumu) | **7** test şema/sütun muhasebesine temas ediyor | 🔴 **ÖLÇÜLMEDİ (tasarıma bağlı)** — sütunun tipi/semantiği/enforcement'ı BİLİNMİYOR |
+| **S4** | Olay defterine kayıt, şema değişmez | **14** test olay defterine temas ediyor | 🔴 **ÖLÇÜLMEDİ (tasarıma bağlı)** — olay şekli ve tüketici ilişkisi BİLİNMİYOR |
+
+🔴 **"TEMAS EDEN" ile "DEĞİŞECEK" AYNI ŞEY DEĞİLDİR** ve bu tabloda
+eşitlenmemiştir. Temas sayıları **bugünkü mekanizmaya dokunan** testlerdir.
+
+*(Ölçüm notu: ilk sayımda `/CHECK/i` deseni `checkpoint` içindeki `check`'i
+yakalayıp S1'i 47 gösterdi — substring tuzağı. Sınır-duyarlı desenle
+yeniden ölçüldü: **27**.)*
+
+**S5 — başka bir yol:** bu turda **BULUNAMADI**. (Aranan yer: mevcut 11
+durum + M6 girdi kümesi + şema + olay defteri. "Yok" DENMEZ.)
+
+## KAYIPSIZLIK
+
+| seçenek | race olduğu bilinir mi | HANGİ ALANDA olduğu korunur mu |
+|---|---|---|
+| **S1** (alan başına durum) | evet | **KORUNUR** — durum alan başına yazılır; tasarımdan bağımsız çıkarılabilir |
+| **S2** | 🔴 **ÖLÇÜLMEDİ** — yeni girdi alanının alan başına mı run başına mı olduğu tasarıma bağlı |
+| **S3** | 🔴 **ÖLÇÜLMEDİ** — sütunun granülaritesi tasarıma bağlı |
+| **S4** | 🔴 **ÖLÇÜLMEDİ** — olayın şekli tasarıma bağlı. **Ek sınır:** olay defteri `provenance_complete`'i **BESLEMEZ** (M6 yalnız beş durum alanından türetir, ölçüldü), yani şema değişmezse M6 yine 1 üretir |
+
+## INTRA-MEASUREMENT SKEW İLE İLİŞKİ
+
+🔴 **YENİ HÜKÜM KURULMADI — mevcut borcun (T-21) bu soruya etkisi
+adlandırılıyor.**
+
+İkinci ölçüm de **atomik olmayacaktır**: beş alan yine sırayla ölçülür.
+Sonuç: `t1` ve `t2` birer **an** değil, birer **aralıktır**. Bir alanın t1
+ölçümü ile t2 ölçümü arasındaki pencere, diğer alanınkiyle **aynı değildir**.
+
+Bunun yeniden ölçümün kanıt gücüne etkisi: "beş alan da t1'de ve t2'de
+aynı" ifadesi, **beş ayrı ve kısmen örtüşmeyen pencerede** ayrı ayrı
+değişim gözlenmediği anlamına gelir — tek bir ortak pencerede değil.
+**ÖLÇÜLMEDİ (producer tasarımına bağlı):** bu pencerelerin genişliği ve
+örtüşmesi.
