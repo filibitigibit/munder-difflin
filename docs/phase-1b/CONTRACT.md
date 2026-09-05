@@ -363,11 +363,24 @@ tersi de geçerlidir.
 olmayan bir repoda çalışma ağacı kökü **SORULAMAZ**. Ölçülen `exit 128`
 bu hükmün *sebebi* değil, onunla tutarlı bir olgudur.
 
-🔴 **İKİ GEREKÇE ÖLÇÜLMEMİŞ BİR DAVRANIŞA DAYANIR VE BU AÇIKÇA
-YAZILIDIR:** `bare-repo` ve `submodule` × `git_worktree_path`
-kararlarının gerekçesi "izolasyon mevcutsa kavram uygulanabilir"dir;
-**izolasyon yöneticisinin bare repo ve submodule davranışı BU TURDA
-ÖLÇÜLMEDİ.**
+**İZOLASYON YÖNETİCİSİNİN DAVRANIŞI ÖLÇÜLMEDİ** — bare repo ve
+submodule bağlamlarında. Bu bir olgu boşluğudur ve böyle kayıtlıdır.
+
+🔴 **AMA YUKARIDAKİ İKİ KARAR BU ÖLÇÜME DAYANMAZ — denetlendi.**
+Üç gerekçe cümlesinin (“TANIM GEREĞİ uygulanamaz KILMAZ” ·
+“izolasyon mevcutsa kavram uygulanabilir” · “kavram uygulanır”)
+üçü de **NORMATİF AYRIMDIR**; hiçbiri bir davranış öngörmez.
+“İzolasyon mevcutsa” bir **ÖN KOŞULDUR**, yöneticinin ne yapacağına
+dair bir tahmin değildir.
+
+🔴 **BİR ÜRETİM BAŞARISIZLIĞI BU KARARLARI ÇÜRÜTEMEZ.** Sözleşmenin
+kendi tanımlarıyla: `not_applicable` = “kavram UYGULANMAZ”,
+`failed` = “ölçüm DENENDİ ve BAŞARISIZ oldu”. Bir üretim
+başarısızlığı **`failed` ailesine** girer — üstelik **denemek, kavramın
+UYGULANDIĞINI ÖN VARSAYAR**: uygulanmayan bir şeyde denenip başarısız
+olunamaz. Yani böyle bir bulgu bu kararları çürütmez, **ön varsayar**.
+İkisini karıştırmak M5’in başından beri ayırdığını (“Hiçbir sınıf yanlış
+aileye yazılamaz”) geri birleştirir.
 
 🔴 **KABİLİYET ≠ DAVRANIŞ:** git'in kendi `worktree add` komutu bare
 repoda `exit 0` verdi (`PROBE-RESULTS.md` BLOK 1). Bu **GİT'İN

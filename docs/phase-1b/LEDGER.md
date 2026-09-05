@@ -202,6 +202,53 @@ YANLIŞ ÖLÇEN aracın kusuru **KAPALI** (bkz. BÖLÜM 4, A-1).
 **KAPANAN KALEMLER: T-11, T-15.** ON SEKİZ kalemin **ikisi KAPALI**, on altısı
 AÇIK
 
+### RB-1 — REDDEDİLEN BULGU: "iki gerekçe ölçülmemiş davranışa dayanıyor"
+
+**BULGU (implementer, sebep-alan eşlemesi turu):** `bare-repo` ve
+`submodule` × `git_worktree_path` GEÇERSİZ kararlarının gerekçesi
+izolasyon yöneticisinin ÖLÇÜLMEMİŞ davranışına dayanıyor; T-18
+beklenenden farklı çıkarsa bu iki hücre yeniden açılabilir.
+
+**HÜKÜM: REDDEDİLDİ.** Denetim sonucu — T-19 **İHDAS EDİLMEDİ**.
+
+**RED GEREKÇESİ — İKİ BAĞIMSIZ AYAK:**
+
+**(1) Gerekçeler NORMATİF, davranışsal değil.** Üç gerekçe cümlesi ayrı
+ayrı sınıflandırıldı:
+
+| # | cümle | sınıf |
+|---|---|---|
+| C1 | "bare repo olması worktree_path kavramını TANIM GEREĞİ uygulanamaz KILMAZ" | NORMATİF AYRIM |
+| C2 | "izolasyon mevcutsa kavram uygulanabilir kabul edilir" | NORMATİF AYRIM — "izolasyon mevcutsa" bir ÖN KOŞULDUR, davranış tahmini DEĞİL |
+| C3 | "kavram uygulanır" (submodule) | NORMATİF AYRIM |
+
+**Davranış varsayımı taşıyan cümle: 0.** Hiçbiri "yönetici bare repoda
+path ÜRETİR" demiyor.
+
+**(2) T-18 bu kararları ÇÜRÜTEMEZ — farklı AİLE, farklı EKSEN.**
+T-18'in ekseni beş `failed` sınıfıdır; kararlar `not_applicable`
+ailesindedir. Sözleşmenin kendi tanımlarıyla bir ÜRETİM BAŞARISIZLIĞI
+"denendi ve başarısız oldu"dur → **`failed`**. Üstelik **denemek,
+kavramın UYGULANDIĞINI ÖN VARSAYAR** — uygulanmayan bir şeyde denenip
+başarısız olunamaz. Böyle bir bulgu kararı çürütmez, **ön varsayar**.
+
+**KORUNAN AYRIM:** `not_applicable` ("kavram uygulanmaz") ile `failed`
+("ölçüm denendi, başarısız oldu") **AYRI AİLELERDİR** (M5:310 — "Hiçbir
+sınıf yanlış aileye yazılamaz"). Bulguyu kabul etmek, M5'in en başından
+beri ayırdığı iki sınıfı geri birleştirirdi.
+
+**KAYIT DİSİPLİNİ:** bulguyu üreten annotation (CONTRACT M5) bu turda
+düzeltildi — yanlış çıkarım kaldırıldı, **doğru olan olgu boşluğu
+korundu**: izolasyon yöneticisinin bare/submodule davranışı gerçekten
+ölçülmedi; sadece kararlar ona **dayanmıyor**.
+
+🔴 **BU RED, İZOLASYON YÖNETİCİSİNİN DAVRANIŞININ ÖNEMSİZ OLDUĞUNU
+SÖYLEMEZ.** O davranış T-18'de ölçülecektir ve `failed` hücrelerini
+kapatacaktır. Red yalnız şunu söyler: o ölçüm bu iki `not_applicable`
+kararını **açmaz**.
+
+---
+
 ### T-18 — ÖLÇÜM EKSENİ (kapattığı hücrelerle BİREBİR)
 
 🔴 **ÖLÇÜM EKSENİ: BEŞ `failed` SINIFI — repo bağlamı DEĞİL.**
