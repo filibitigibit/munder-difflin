@@ -8,7 +8,7 @@ yazılmadı, şema değiştirilmedi.
 
 ## Okuma kuralı
 
-Her vaka kalıcı bir kimlik taşır ve altı alan hâlinde yazılır:
+Her vaka kalıcı bir kimlik taşır ve **yedi zorunlu alan** hâlinde yazılır. Sekizinci alan `GATE BAGIMLILIGI` **isteğe bağlıdır**; yokluğu bir eksiklik değildir.
 
 | alan | anlamı |
 |---|---|
@@ -19,6 +19,25 @@ Her vaka kalıcı bir kimlik taşır ve altı alan hâlinde yazılır:
 | `BEKLENEN GOZLEM` | ölçülecek olan; hükmün değil, gözlemin ifadesi |
 | `IZIN VERILEN HUKUM` | bu gözlemin desteklediği EN GENİŞ hüküm |
 | `DILIM` | `DILIM 1` \| `FIXTURE DILIMI` \| `ATANAMADI` — hangi uygulama diliminde koşulur |
+| `GATE BAGIMLILIGI` | **İSTEĞE BAĞLI ALAN.** Vakanın koşulabilmesi için açılması gereken gate. **Boş ise vaka, bulunduğu dilimin gate'ine tabidir.** |
+
+## GATE BAGIMLILIGI alanının anlamı
+
+`GATE BAGIMLILIGI` **isteğe bağlı** bir alandır. Bir vakanın **koşulabilmesi**
+için açılması gereken gate'i adıyla yazar.
+
+- **Alan boş/yok ise:** vaka, bulunduğu **dilimin** gate'ine tabidir. Başka
+  hiçbir koşul ima edilmez.
+- **Alan doluysa:** vaka, dilim gate'i açılmış olsa bile, yazılı gate
+  açılmadan **KOŞULAMAZ**.
+
+**NE DEMEK DEĞİLDİR:** bu alan bir vakayı GEÇERSİZ, ERTELENMİŞ veya
+SİLİNEBİLİR yapmaz. Vaka plandadır, sayımdadır ve dilimindedir; yalnız
+koşulma anı başka bir gate'e bağlanmıştır.
+
+**Bu alan bir gate ŞARTI DEĞİLDİR.** Bir vakanın `GATE BAGIMLILIGI`
+taşıması, tek başına, o vakanın kendi diliminin gate'ini bloke ettiği
+anlamına GELMEZ; blokaj yalnız ilgili gate'in kendi şartından doğar.
 
 ## DILIM alanının ölçütü ve anlamı
 
@@ -52,21 +71,83 @@ SEMANTİK TAMLIĞI. İkisi aynı cümlede karıştırılmaz.
 | şart | ölçüm |
 |---|---|
 | `ATANAMADI` | **= 0** |
-| KAYITLI/SINIFLANMIŞ AÇIK ÇELİŞKİLER ∩ `DILIM 1` | **BOŞ** |
+| DİLİM 1 KAPSAMINI BELİRSİZ BIRAKAN KAYITLI ÇELİŞKİ | **= 0** |
+
+Bir kayıtlı çelişki Gate 1'i ancak **DİLİM 1'in KAPSAMINDAKİ** bir
+yapıyı belirsiz bırakıyorsa kapatır.
+
+**DİLİM 1 KAPSAMI — DİLİM 1'İN ÜRETTİĞİ YAPILAR:**
+
+- şema göçü
+- M13'ün 11 sütunu + M1'in `checkpoint_sha_source` sütunu (toplam 12)
+- `measured` durum değeri
+- `never_measured` durum değeri
+- M4 yapısal CHECK
+- OLD→NEW trigger
+
+**BU LİSTE YAPILARDAN OLUŞUR, VAKALARDAN DEĞİL.** Bir vakayı bu listeye
+koymak, düzeltilmek istenen eksen karışmasını geri getirir: DİLİM 1'de
+koşan her vaka otomatik olarak "DİLİM 1 kapsamında" sayılır ve şart
+eski hâline çöker. DİLİM 1 implementation'ı KOD üretir; vakalar o kodu
+SINAR.
+
+**ÖLÇÜLDÜ — NİÇİN VAKA LİSTESİ KONMADI:** `DILIM: DILIM 1` taşıyan vaka
+sayısı **73**'tür (GRUP G 21 · W 28 · F 12 · C 7 · D 5), yalnız G ve W
+değil. Yani vaka kümesi konsaydı da G+W (49) olarak yazılamazdı; 24 vaka
+dışarıda kalırdı ve şart ÖLÇTÜĞÜ RİSKTEN DAR yazılmış olurdu.
+
+**KOŞULAMAYAN VAKA GATE 1'İ KAPATMAZ.** Bir vakanın bugün
+yazılamaz/koşulamaz olması `GATE BAGIMLILIGI` alanıyla taşınır — bu, o
+vakanın ait olduğu gate'i işaretler, Gate 1'i DEĞİL.
+
+**GEREKÇE:** bir vakanın DİLİM 1'de KOŞACAK olması, o vakanın DİLİM 1
+KODUNU bloke ettiği anlamına GELMEZ. Bunlar iki ayrı eksendir: `DILIM`
+bir vakanın NEREDE koşacağını söyler; ÇELİŞKİ bir vakanın YAZILABİLİR
+olup olmadığını söyler. Gate 1'in eski şartı bu iki dikey ekseni
+kesiştiriyordu ve DİLİM 1 şemasıyla ilgisi olmayan bir bağımlılığın
+DİLİM 1 kodunu bloke etmesine yol açıyordu.
+
+**BU ŞARTIN DEĞERLENDİRİLMESİ MEKANİK DEĞİLDİR:** her kayıtlı çelişki
+için "DİLİM 1 kapsamındaki hangi yapıyı belirsiz bırakıyor" sorusu
+ADIYLA cevaplanır. Cevap yoksa çelişki Gate 1'i kapatmaz ama hangi
+gate'e ait olduğu YAZILIR. **Emin olunamayan bir çelişki ETKİLİYOR
+sayılır ve bildirilir.**
 
 **HÜKÜM SINIRI:** Gate 1'in açılması, DİLİM 1'de KEŞFEDİLMEMİŞ
-semantik çelişki bulunmadığını KANITLAMAZ. Yalnız mevcut KAYITLI
-çelişkilerin DİLİM 1'i bloke etmediğini gösterir. Gate 1'in anlamı:
-"elimizde bugün DİLİM 1 kodunu yasaklayan BİLİNEN bir engel yok."
+semantik çelişki bulunmadığını KANITLAMAZ. Yalnız BİLİNEN engellerin
+DİLİM 1 kodunu bloke etmediğini gösterir. Gate 1'in anlamı: "elimizde
+bugün DİLİM 1 kodunu yasaklayan BİLİNEN bir engel yok."
 **Bu, "DİLİM 1 kusursuzdur" DEMEK DEĞİLDİR.**
 
-**DURUM (v3.8 ölçümü): KAPALI.** Kayıtlı açık çelişki C-07'nin dilimi
-`DILIM 1`'dir, dolayısıyla kesişim BOŞ DEĞİLDİR. Ayrıntı ve dilim
-yeniden değerlendirme sorusu tur raporundadır.
+**DURUM (v3.9 ölçümü): AÇIK.**
 
-Kapsam: şema göçü, M13'ün 11 sütunu + M1'in `checkpoint_sha_source`,
-`measured`, `never_measured`, M4 yapısal CHECK, OLD→NEW trigger,
-GRUP G ve GRUP W vakaları.
+| şart | ölçülen |
+|---|---|
+| `ATANAMADI` | **0** (107 vakanın tamamı dilim taşıyor) |
+| DİLİM 1 kapsamını belirsiz bırakan kayıtlı çelişki | **0** |
+
+Kayıtlı çelişki **1** adettir: **C-07** — öznesi
+(`git_worktree_path`'in checkpoint karşılığı) M1 KOPYALAMA
+KÜMESİ'ne göre YOKTUR. Altı yapının her biri için ADIYLA
+değerlendirildi:
+
+| DİLİM 1 yapısı | C-07 belirsiz bırakıyor mu | ölçülen gerekçe |
+|---|---|---|
+| şema göçü | HAYIR | C-07 hiçbir sütunu ADIYLA istemiyor (ölçüldü: gövdesinde `checkpoint_<ad>` geçişi yok; pozitif kontrol C-08'de 4 ad) |
+| 12 sütun (M13'ün 11'i + `checkpoint_sha_source`) | HAYIR | sayı iki ayrı yerde yazılı (M13 "Toplam 11", "TOPLAM ... **12**"); M1 ek sütunu AÇIKÇA yasaklıyor |
+| `measured` | HAYIR | C-07 `not_applicable` hakkında; `measured`'ın tanımına dokunmuyor |
+| `never_measured` | HAYIR | C-07 gövdesinde geçmiyor |
+| M4 yapısal CHECK | HAYIR | M4 KAPSAM checkpoint alanlarını CHECK'ten AÇIKÇA dışlıyor |
+| OLD→NEW trigger | HAYIR | trigger M13 değer/durum çiftlerini bağlar; C-07'nin öznesi M13 sütunu değil |
+
+**6 yapının 6'sı için cevap HAYIR.** C-07 Gate 1'i kapatmaz; ait
+olduğu gate `GATE BAGIMLILIGI` alanında YAZILIDIR (GATE 2).
+
+**BU ÖLÇÜM NEYİ KANITLAMIYOR:** çelişki taraması İKİ BELGE üzerinde
+DESEN tabanlıdır (checkpoint öznesi · legacy ad · tanımsız madde
+atfı · belirsizlik imleri). Hiçbir desene uymayan SEMANTİK bir
+çelişki bu taramada GÖRÜNMEZ. "Kayıtlı çelişki = 1" ifadesi
+"çelişki = 1" DEMEK DEĞİLDİR.
 
 #### GATE 2 — FIXTURE / PRODUCER DİLİMİ  (BİLİNEN ENGEL GATE'İ)
 
@@ -100,13 +181,44 @@ daraltmak VARSAYIM olurdu.
 ETKİLEMEZ. Bir kalemi `YOK` yapmak, sınıflandıramamanın örtüsü olarak
 KULLANILAMAZ; gerekçesi vakanın metninde yazılır.
 
-Bunların yanında **BİR GÖRÜNÜRLÜK METRİĞİ** raporlanır:
+Bunların yanında **DÖRT GÖRÜNÜRLÜK METRİĞİ** raporlanır:
 
-> **DENETLENMEMİŞ BAĞ sayısı** (denetlenen / 66)
+| metrik | biçim |
+|---|---|
+| DENETLENMEMİŞ BAĞ | `denetlenmemiş/C(madde,2) (önceki tur N, değişim ±D)` |
+| TANIMSIZ SEBEP-ALAN HÜCRESİ | `tanımsız/55 (önceki tur N, değişim ±D)` |
+| BELİRSİZ KALEM SAYISI | `sayı (önceki tur N, değişim ±D)` |
+| AÇIK ÇELİŞKİ SAYISI | `sayı (önceki tur N, değişim ±D)` |
 
-Bu metrik **HİÇBİR GATE'İN ŞARTI DEĞİLDİR** ve hiçbir kapıyı TEK
-BAŞINA KAPATMAZ. Sıfıra inmesi BEKLENMEZ. Ama her turda YAZILIR;
-görünmez kalması YASAKTIR.
+**PAYDA SABİT DEĞİL, TÜRETİLİR.** `DENETLENMEMİŞ BAĞ`ın paydası
+sözleşmede TANIMLI madde sayısından her turda YENİDEN hesaplanır
+(`C(n,2)`). Yeni madde ihdas edildiğinde payda BÜYÜR ve denetlenmemiş
+bağ sayısı KENDİLİĞİNDEN artar — bu bir gerileme değil, evrenin
+büyümesidir. **Donmuş bir payda borcu küçük gösterir.**
+
+**BİRİM:** pay ile payda AYNI BİRİMDE olmalıdır — `C(n,2)` YÖNSÜZ
+ikili sayar, dolayısıyla pay da YÖNSÜZ madde-madde çifti sayar. Yönlü
+kenar sayısını bu paydaya bölmek BİRİM HATASIDIR. Madde olmayan
+gövdelere (`DIGER`) giden kenarlar paya GİRMEZ.
+
+**DELTA KURALI — her metrik ÜÇ PARÇA hâlinde yazılır:** bu turun değeri,
+ÖNCEKİ TURUN değeri, ve DEĞİŞİM. Örnek: `80/91 (önceki tur 80, değişim 0)`.
+
+- **Delta HİÇBİR GATE'İN ŞARTI DEĞİLDİR.** Bir gate delta'ya bakarak
+  açılmaz ve kapanmaz.
+- **SIFIR DEĞİŞİM BİR KUSUR DEĞİLDİR.** Bir tur bu metriklerden hiçbirini
+  oynatmadan geçebilir; bu, turun boş geçtiği anlamına GELMEZ.
+- **ÜÇ TUR KURALI:** bir metrik ÜST ÜSTE ÜÇ TUR değişmeden kaldıysa, o tur
+  raporunda **ADIYLA** yazılır: "X metriği 3 turdur sabit." Bu bir alarm
+  değil, bir GÖRÜNÜRLÜK yükümlülüğüdür — hangi borcun donduğu görünür kalır.
+- **DELTA YAZMAK BORCU ERİTMEZ.** Bir metriğin ölçülmüş ve raporlanmış
+  olması, ölçtüğü borcun kapandığı ya da küçüldüğü anlamına GELMEZ.
+- Önceki tur değeri BİLİNMİYORSA `önceki tur ÖLÇÜLMEDİ` yazılır; sıfır
+  varsayılmaz.
+
+Bu metrikler **HİÇBİR GATE'İN ŞARTI DEĞİLDİR** ve hiçbir kapıyı TEK
+BAŞINA KAPATMAZ. Sıfıra inmeleri BEKLENMEZ. Ama her turda YAZILIRLAR;
+görünmez kalmaları YASAKTIR.
 
 **BELİRSİZLİK ÇELİŞKİDEN FARKLI BİR SINIFTIR VE HİÇBİR GATE ONU
 ÖLÇMEZ.** Belirsiz kalan kalemler her turda gate sonucundan AYRI
@@ -767,6 +879,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M5
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
+- GATE BAGIMLILIGI: GATE 2 (sebep-alan eşlemesi)
 - GIRDI: cwd bir bare git deposudur (çalışma ağacı yoktur).
 - BEKLENEN GOZLEM: İlgili alanlar `not_applicable(bare-repo)` durumu ve NULL değer taşır; `failed` ailesinden hiçbir değer yazılmaz.
 - IZIN VERILEN HUKUM: Bare repo bir başarısızlık değil, kavramın uygulanamadığı bir haldir; ancak M6 uyarınca tamamlığı bozar.
@@ -776,6 +889,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M5
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
+- GATE BAGIMLILIGI: GATE 2 (sebep-alan eşlemesi)
 - GIRDI: cwd bir submodule çalışma dizinidir.
 - BEKLENEN GOZLEM: İlgili alanlar `not_applicable(submodule)` durumu ve NULL değer taşır.
 - IZIN VERILEN HUKUM: Submodule kendi uygulanamazlık sınıfıyla kaydedilir.
@@ -964,9 +1078,10 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M1, M5
 - SINIF: KABUL
 - DILIM: DILIM 1
+- GATE BAGIMLILIGI: GATE 2 (sebep-alan eşlemesi)
 - GIRDI: `git_worktree_path` alanı `not_applicable(no-isolation)` olan bir run, sonra safe quit.
 - BEKLENEN GOZLEM: Checkpoint tarafındaki karşılık gelen alan aynı sınıfı taşır; `failed` ailesine dönüşmez, `measured` olmaz.
-- IZIN VERILEN HUKUM: Kopyalama sınıf koruyucudur; aile değişimi kopyalama sırasında da yasaktır.
+- IZIN VERILEN HUKUM: Kopyalama sınıf koruyucudur; aile değişimi kopyalama sırasında da yasaktır. **GATE 1'İ BLOKE ETMEZ:** bu vaka DİLİM 1'in şemasını, CHECK'ini, trigger'ını veya göçünü belirsiz BIRAKMAZ — engeli sebep-alan eşlemesidir ve o GATE 2'ye aittir. **GATE 2 açılmadan KOŞULAMAZ.** Bu vaka bugün AÇIK ÇELİŞKİ olarak kayıtlıdır: öznesi (`git_worktree_path`'in checkpoint karşılığı) M1 KOPYALAMA KÜMESİ'ne göre YOKTUR.
 
 #### C-08 · checkpoint_sha M4'e tabi değildir; kopyalanmamış bir değer reddedilir
 - ID: C-08
