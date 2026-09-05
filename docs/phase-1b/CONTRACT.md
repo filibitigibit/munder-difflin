@@ -89,6 +89,10 @@ Bir satırın SON HALİNDEKİ durum/değer kombinasyonu izinli mi.
 UYGULAYAN KATMAN: sütun-düzeyi CHECK kısıtı.
 ÖLÇÜLDÜ: 23/23 vaka, iki tasarımda, 0 ifade edilemeyen vaka
 (SQLite 3.49.2 / better-sqlite3 11.10.0).
+KAPSAM: scratch in-memory DB; iki temsilci alan (`git_base_sha`
+non-branch, `git_branch` branch) — beş M13 alanının HEPSİNDE
+ÖLÇÜLMEDİ; üretim DB'sinde (`harness.db`) ÖLÇÜLMEDİ; performans
+ÖLÇÜLMEDİ.
 
 **INVARYANT B — GÜNCELLEME BAĞLAŞIMI (update coupling)**
 Durum ve değer birbirinden BAĞIMSIZ değiştirilemez.
@@ -97,6 +101,10 @@ CHECK BU INVARYANTI UYGULAYAMAZ — ölçüldü: normal satır CHECK'i
 OLD değeri GÖRMEZ; geçerli bir son hale düşen değer-tek UPDATE
 geçer. Generated column da OLD'u göremez.
 (SQLite 3.49.2 / better-sqlite3 11.10.0)
+KAPSAM: scratch in-memory DB; TEK alan (`git_base_sha`); tek satırlık
+senaryolar. Beş alanda ve çoklu-alan trigger'ında ÖLÇÜLMEDİ; üretim
+DB'sinde ÖLÇÜLMEDİ; toplu (batch) UPDATE'te ÖLÇÜLMEDİ; `RAISE(ABORT)`'un
+iç içe transaction geri alma davranışı ÖLÇÜLMEDİ.
 
 BU BÖLÜNME BİR TASARIM TERCİHİ DEĞİL, ÖLÇÜLEN BİR SINIRDIR.
 CHECK'in Invaryant B'yi uygulayamaması, Invaryant A'yı
@@ -114,6 +122,12 @@ sebep sütunu tasarımının naive hali iki vakada SESSİZCE izin verdi —
 yalnız FALSE'ta ihlal sayar. Bu delik bir `IS NOT NULL` guard'ı ile
 kapatılabilir, ama kapalı kalması o guard'ı hatırlamaya bağlıdır. Tek
 sütunlu temsilde delik YAPISAL OLARAK yoktur.
+
+KAPSAM: scratch in-memory DB; iki temsilci alan. Gözlenen iki
+başarısız vakadır; ayrı-sebep tasarımında BAŞKA bir NULL-yayılım
+deliği kalmadığı ÖLÇÜLMEDİ. Tek sütunlu temsilde deliğin yapısal
+yokluğu, `<alan>_status` sütununun `NOT NULL` olmasına dayanır —
+bu koşul kaldırılırsa iddia ÖLÇÜLMEMİŞ hale gelir.
 
 İzinli durum alfabesi (tam liste, kapalı küme):
 
@@ -273,6 +287,12 @@ reconstructed*).
 sütun-düzeyi CHECK'i kabul eder ve bu CHECK başka bir sütuna
 referans verebilir. Bu yolda satırlar hiç kopyalanmaz ve rowid'ler
 sabit kalır.
+KAPSAM: scratch in-memory DB; **3 satırlık** üç-profilli fixture. Beş
+M13 alanının hepsi `ADD COLUMN` ile eklendi; kısıtın FİİLEN
+UYGULANDIĞI iki temsilci alanda (`git_base_sha`, `git_branch`)
+doğrulandı — kalan üç alanda ÖLÇÜLMEDİ. Üretim DB'sinde
+(`harness.db`) ÖLÇÜLMEDİ; gerçek boyutlu bir tabloda süre ÖLÇÜLMEDİ;
+WAL modunda açık okuyucu varken ÖLÇÜLMEDİ.
 
 **SONUÇ:** M10'un satır kümesi koruması — satır kaybı, çoğaltma,
 kimlik değişimi — artık yalnız TEST EDİLEN bir özellik değil,
@@ -283,6 +303,10 @@ seçilen göç şeklinin YAPISAL sonucudur. Testler bunu yine de
 31 sütuna çıkar. `ADD COLUMN` CHECK'i ADLANDIRILAMAZ, dolayısıyla
 hata mesajı tam ifadeyi basar (~371 karakter) — tablo-düzeyi
 adlandırılmış kısıtın vereceği kısa mesaj kaybedilir.
+KAPSAM: sütun sayısı (20 → 31) scratch in-memory DB'de beş alanla
+ölçüldü. ~371 karakterlik mesaj YALNIZ `git_base_sha` alanının
+CHECK'i için ölçüldü; alan başına uzunluk değişir (`git_branch`
+CHECK'i daha uzundur) ve diğer alanlarda ÖLÇÜLMEDİ.
 
 ---
 
@@ -298,6 +322,15 @@ kaynakları, home çözümü, alt sürecin gördüğü ortam.
 
 `command-nonzero` fixture'ı SIFIR DIŞI dönmek ZORUNDADIR (sıfır dönen
 sahte git sahte `measured` üretir, ÖLÇÜLDÜ).
+
+KAPSAM (yukarıdaki iki ÖLÇÜLDÜ için):
+`.cmd` gölgelememesi — Windows 10; Node/Electron `child_process.spawn`,
+`shell:true` YOK; PATH'te sahte dizin İLK sırada ve PATHEXT `.CMD`
+içeriyorken ölçüldü. POSIX'te ÖLÇÜLMEDİ; `shell:true` ile ÖLÇÜLMEDİ.
+Sıfır dönen sahte git — üretim IPC yolunda (`git:branch`, `git:status`,
+`git:aheadBehind`) Electron ana sürecinde ölçüldü; `runGit`'in bu üç
+tüketicisi `''` (boş string) üretti. Faz 1B'nin provenance ölçüm yolu
+HENÜZ YOKTUR, dolayısıyla o yolda ÖLÇÜLMEDİ.
 
 Yolun metinsel olarak scratch önekiyle başlaması YETERLİ DEĞİLDİR;
 junction/symlink kaçışı ÖLÇÜLMEDİ olarak taşınır.
@@ -402,3 +435,26 @@ cümleyi davet eder.
 DB yalnızca GRAMERİ ve YAZMA BAĞLAŞIMINI garanti eder. Verinin
 bir hüküm için epistemik olarak YETERLİ olup olmadığını
 Measurement Layer belirler ve o katman HENÜZ YOKTUR.
+
+### MEASUREMENT LAYER GEREKSİNİMİ — BUGÜNDEN KAYITLI
+
+Sistemin gürültülü olduğu yer yanlış YAZMA, sessiz olduğu yer
+yanlış OKUMADIR. DB'nin reddettiği her yazma bir hata mesajı
+üretir; `provenance_complete=false` taşıyan bir run'dan hüküm
+kurulduğunda hiçbir şey görülmez.
+
+Measurement Layer geldiğinde "bu bayrağa dayanarak kaç yanlış
+hüküm kuruldu" sorusunu cevaplayacak bir kayıt OLMAYACAK.
+
+**GEREKSİNİM:** `provenance_complete=false` olan bir run'ın
+provenance'a DAYALI TÜKETİMİ event store'a bir OLAY olarak yazılır.
+Faz 1A'nın append-only defteri tam olarak bunun içindir.
+
+**TANIM SINIRI:** "tüketim" bugün TANIMLI DEĞİLDİR ve bu metin bir
+implementation emri OLARAK OKUNAMAZ. Sıradan okuma (UI yenileme,
+liste sorgusu, arka plan hidrasyonu) ile provenance'a dayalı hüküm
+girişimi AYNI ŞEY DEĞİLDİR; aynı run'ın kırk kez okunması kırk
+olay üretmemelidir. Hangi olayın kaydedileceği Measurement Layer
+fazında AYRICA ölçülür ve tanımlanır.
+
+**BU FAZDA UYGULANMAZ.**

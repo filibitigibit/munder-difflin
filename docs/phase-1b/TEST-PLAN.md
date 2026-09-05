@@ -18,11 +18,30 @@ Her vaka kalıcı bir kimlik taşır ve altı alan hâlinde yazılır:
 | `GIRDI` | vakanın kurduğu durum |
 | `BEKLENEN GOZLEM` | ölçülecek olan; hükmün değil, gözlemin ifadesi |
 | `IZIN VERILEN HUKUM` | bu gözlemin desteklediği EN GENİŞ hüküm |
-| `DILIM` | `DILIM 1` \| `FIXTURE DILIMI` — hangi uygulama diliminde koşulur |
+| `DILIM` | `DILIM 1` \| `FIXTURE DILIMI` \| `ATANAMADI` — hangi uygulama diliminde koşulur |
 
-**`DILIM` alanı yalnız v2'de eklenen vakalarda (G-12..G-20, W-17..W-21,
-U-01..U-05) bulunur.** Özgün 80 vakaya dilim ataması YAPILMAMIŞTIR; o
-atama bu turun işi değildi ve sayımda `ATANMAMIŞ` olarak raporlanır.
+## DILIM alanının ölçütü ve anlamı
+
+**Ölçüt (mekanik):**
+
+- `DILIM 1` = yalnız DB gerektiren vaka. Electron YOK, PTY YOK, git alt
+  süreci YOK, sahte çalıştırılabilir YOK.
+- `FIXTURE DILIMI` = gerçek git ortamı, sahte git `.exe`'si, gecikme
+  enjeksiyonu, üretim ölçüm yolunun çağrılması veya Electron gerektiren vaka.
+- `ATANAMADI` = vakanın GIRDI'si bu iki kovadan hiçbirini gerektirmiyor
+  (örnek: yalnız kaynak incelemesi / yapısal denetim). **Bu bir kusur
+  değil, bir ölçüm sonucudur.**
+
+**DILIM ETİKETİNİN ANLAMI — YÜRÜTME BİLGİSİDİR, EVREN DEĞİLDİR.**
+Dilim ataması vakanın NEREDE koşacağını söyler. Vakanın kanıtladığı
+hükmün EVRENİ DEĞİLDİR. Bir vaka fixture diliminde koşup, kanıtladığı
+hüküm yalnız sahte git davranışı, belirli bir SQLite sürümü ya da tek
+bir platform için geçerli olabilir. Hükmün evreni her vakanın
+`IZIN VERILEN HUKUM` alanında ayrıca yazılır; `DILIM` onu daraltmaz ve
+genişletmez.
+
+**Kapsam:** 107 vakanın hepsi `DILIM` alanı taşır. Özgün 80 vakanın
+ataması v3.1'de GIRDI metinleri okunarak yapıldı.
 
 **Sınıf, BEKLENEN GÖZLEMDEN türetilir.** Başarılı olması beklenen bir vaka
 `REDDETME` kovasına yazılmaz. Exit 0 vermesi gereken ama başka özelliği
@@ -49,6 +68,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-01
 - MADDE: M4
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: user_version 2 olan, Faz 1A şemasına sahip bir DB dosyası.
 - BEKLENEN GOZLEM: `migrate()` sonrası `pragma user_version` = 3; `runs` tablosunda M3/M4/M6 sütunları mevcut.
 - IZIN VERILEN HUKUM: Göç bu DB dosyası üzerinde uygulanabilir ve sürüm numarasını ilerletir.
@@ -57,6 +77,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-02
 - MADDE: M4
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `runs`, `events`, `kv`, `command_history` tablolarında dolu satırlar bulunan user_version 2 DB. Göçten önce her tablonun her satırının her sütunu tam olarak dökülür.
 - BEKLENEN GOZLEM: Göç sonrası aynı döküm alınır; eski sütun kümesi üzerinde iki döküm karakter karakter aynıdır. Satır sayısı karşılaştırması veya seçili alan karşılaştırması bu vakayı geçirmez.
 - IZIN VERILEN HUKUM: Göç mevcut veriyi bu tablolarda değiştirmez. Yeni sütunların eklenmesi eski veriyi bozmaz.
@@ -65,6 +86,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-03
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Göç uygulanmış DB. `events` tablosundaki bir satıra doğrudan `UPDATE` denenir.
 - BEKLENEN GOZLEM: Yazma `RAISE(ABORT, 'events is append-only')` ile reddedilir. Trigger'ın `sqlite_master`'da var olması bu vakayı geçirmez; reddin fiilen gerçekleşmesi gerekir.
 - IZIN VERILEN HUKUM: Göç, Faz 1A'nın append-only UPDATE korumasını çalışır hâlde bırakır.
@@ -73,6 +95,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-04
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Göç uygulanmış DB. `events` tablosundaki bir satıra doğrudan `DELETE` denenir.
 - BEKLENEN GOZLEM: Yazma `RAISE(ABORT, 'events is append-only')` ile reddedilir.
 - IZIN VERILEN HUKUM: Göç, Faz 1A'nın append-only DELETE korumasını çalışır hâlde bırakır.
@@ -81,6 +104,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-05
 - MADDE: M4
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Göç uygulanmış DB. Göç öncesi indeks adları listelenir.
 - BEKLENEN GOZLEM: `idx_runs_agent`, `idx_runs_status`, `idx_runs_parent`, `idx_events_run`, `idx_events_type` göç sonrası `sqlite_master`'da mevcuttur; göç öncesi listeden eksilen indeks yoktur.
 - IZIN VERILEN HUKUM: Göç mevcut indeksleri düşürmez.
@@ -89,6 +113,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-06
 - MADDE: M4
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Zaten user_version 3 olan bir DB üzerinde `migrate()` yeniden çağrılır.
 - BEKLENEN GOZLEM: Hata fırlatılmaz; user_version 3 kalır; şema dökümü ve veri dökümü ikinci çağrıdan önce/sonra birebir aynıdır.
 - IZIN VERILEN HUKUM: Göç idempotenttir; tekrar açılan bir uygulama şemayı tekrar değiştirmez.
@@ -97,6 +122,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-07
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Göç uygulanmış DB. Persistence API'si atlanarak, `runs` tablosuna beyaz listede olmayan bir (durum, değer) kombinasyonu taşıyan doğrudan `INSERT` denenir.
 - BEKLENEN GOZLEM: SQLite CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Beyaz liste uygulaması API katmanında değil, DB katmanındadır; API'yi atlayan bir yazıcı da reddedilir.
@@ -105,6 +131,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-08
 - MADDE: M4
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Göç uygulanmış DB. `runs` tablosuna beyaz listedeki bir (durum, değer) kombinasyonu taşıyan doğrudan `INSERT` denenir.
 - BEKLENEN GOZLEM: Yazma başarılı olur ve satır geri okunduğunda yazılan değerleri taşır.
 - IZIN VERILEN HUKUM: CHECK kısıtı yalnız ihlalleri reddeder; geçerli yazmayı engellemez. G-07'nin reddi kısıtın aşırı geniş olmasından kaynaklanmıyordur.
@@ -113,6 +140,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-09
 - MADDE: M4, M5
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Göç öncesinde `runs` tablosunda git alanları hiç ölçülmemiş (Faz 1A) satırlar bulunur.
 - BEKLENEN GOZLEM: Göç sonrası bu satırların her git alanı beyaz listeye uyan bir durum taşır; hiçbiri CHECK'i ihlal eden bir ara durumda kalmaz. Atanan sınıf sabit listedendir, uydurma değildir.
 - IZIN VERILEN HUKUM: Göç, geçmiş satırları yeni kısıtla uyumlu hâle getirir. Bu satırların git değerleri hiçbir zaman ölçülmemiştir; bu vaka yalnız kısıt uyumunu kanıtlar.
@@ -121,6 +149,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-10
 - MADDE: M4
 - SINIF: POZITIF_KONTROL
+- DILIM: DILIM 1
 - GIRDI: G-01..G-09'un kullandığı göç-öncesi fixture DB.
 - BEKLENEN GOZLEM: `migrate()` çağrılmadan önce `pragma user_version` = 2 VE M3/M4/M6 sütunları `pragma table_info(runs)` çıktısında YOKTUR.
 - IZIN VERILEN HUKUM: G grubunun "göç sonrası şu oldu" gözlemleri, zaten göç edilmiş bir fixture'ı yeniden ölçmüyordur.
@@ -129,6 +158,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: G-11
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: G-09'un ürettiği, git alanları hiç ölçülmemiş legacy satırlar.
 - BEKLENEN GOZLEM: Bu satırların `provenance_complete` değeri false'tur.
 - IZIN VERILEN HUKUM: Faz 1A döneminde açılmış run'lardan provenance gerektiren PROVEN hüküm kurulamaz ve bayrak bunu beyan eder.
@@ -239,6 +269,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-01
 - MADDE: M4
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `measured` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: Yazma geçer; satır geri okunduğunda durum `measured`, değer yazılan string'tir.
 - IZIN VERILEN HUKUM: Beyaz listenin `measured` satırı yazılabilir.
@@ -247,6 +278,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-02
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `measured` durumu ve NULL değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: "Ölçüldü" beyanı değersiz kaydedilemez.
@@ -255,6 +287,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-03
 - MADDE: M4, M5
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `branch` alanına `measured_detached` durumu ve NULL değer yazılır.
 - BEKLENEN GOZLEM: Yazma geçer.
 - IZIN VERILEN HUKUM: Detached HEAD, `branch` için kendi sınıfıyla kaydedilebilir.
@@ -263,6 +296,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-04
 - MADDE: M4, M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `branch` alanına `measured_detached` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Detached durumda bir dal adı uydurulup kaydedilemez.
@@ -271,6 +305,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-05
 - MADDE: M4, M5
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `failed(git-missing)` durumu ve NULL değer yazılır. Vaka dört sabit sebep üzerinde parametrelenir: `git-missing`, `command-nonzero`, `timeout`, `not-a-repo`.
 - BEKLENEN GOZLEM: Dört parametrenin her birinde yazma geçer.
 - IZIN VERILEN HUKUM: Sabit listedeki dört başarısızlık sebebi kaydedilebilir.
@@ -279,6 +314,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-06
 - MADDE: M4, M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `failed(timeout)` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Başarısız bir ölçüm değer taşıyamaz; yarım okunan çıktı değer olarak kaydedilemez.
@@ -287,6 +323,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-07
 - MADDE: M4, M5
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `not_applicable(no-isolation)` durumu ve NULL değer yazılır. Vaka üç sabit sebep üzerinde parametrelenir: `no-isolation`, `bare-repo`, `submodule`.
 - BEKLENEN GOZLEM: Üç parametrenin her birinde yazma geçer.
 - IZIN VERILEN HUKUM: Sabit listedeki üç uygulanamazlık sebebi kaydedilebilir.
@@ -295,6 +332,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-08
 - MADDE: M4, M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `worktree_path` alanına `not_applicable(no-isolation)` durumu ve boş olmayan bir yol yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: "Uygulanamaz" beyanı bir değerle birlikte kaydedilemez; izolasyonsuz bir run'a worktree yolu iliştirilemez.
@@ -303,6 +341,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-09
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `measured` + dolu değer taşıyan bir satırda yalnız durum sütunu `failed(timeout)` yapılır; değer sütununa dokunulmaz.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: Durum tek başına güncellenemez; durum ve değer ayrılamaz.
@@ -311,6 +350,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-10
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `failed(timeout)` + NULL taşıyan bir satırda yalnız değer sütununa bir SHA yazılır; durum sütununa dokunulmaz.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: Değer tek başına güncellenemez; bir başarısızlık kaydına sonradan değer iliştirilemez.
@@ -319,6 +359,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-11
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `unknown`, `pending`, `partial` gibi beyaz listede olmayan durum string'leri yazılır.
 - BEKLENEN GOZLEM: Her denemede CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Durum alanı kapalı bir kümedir; yeni bir durum sınıfı şema değişikliği olmadan sisteme giremez.
@@ -327,6 +368,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-12
 - MADDE: M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `measured` durumu ve `''` (uzunluk 0 string) yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Boş string dolu değer sayılmaz. Faz 1A'da `orNull`'un `''`'i geçirmesiyle açık kalan boşluk DB katmanında kapanır.
@@ -335,6 +377,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-13
 - MADDE: M4, M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `failed(uydurma-sebep)` yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `<sebep>` serbest string değildir; sabit listedir ve DB bunu uygular.
@@ -343,6 +386,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-14
 - MADDE: M4, M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Bir git alanına `not_applicable(uydurma-sebep)` yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `not_applicable` sebep listesi de kapalıdır; sabit liste uygulaması yalnız `failed` ailesi için değildir.
@@ -351,6 +395,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-15
 - MADDE: M4, M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `measured_detached` durumu `base_sha`, `pty_cwd`, `git_toplevel`, `worktree_path` alanlarına sırayla yazılır. Vaka bu dört alan üzerinde parametrelenir.
 - BEKLENEN GOZLEM: Dört parametrenin her birinde CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `measured_detached` yalnız `branch` alanına özgüdür ve bu kısıtlama DB katmanında uygulanır.
@@ -359,6 +404,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - ID: W-16
 - MADDE: M4
 - SINIF: POZITIF_KONTROL
+- DILIM: DILIM 1
 - GIRDI: W grubunun reddetme vakalarının kullandığı aynı yazma çağrısı, izinli bir kombinasyonla çalıştırılır ve yazılan satır geri okunur.
 - BEKLENEN GOZLEM: Satır yazılır ve geri okunduğunda beklenen değerleri taşır.
 - IZIN VERILEN HUKUM: W grubundaki reddetmeler, yazma yolunun tümüyle bozuk olmasından kaynaklanmıyordur; kısıt seçicidir.
@@ -498,6 +544,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-01
 - MADDE: M3, M2
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: İzolasyonlu bir run; PTY cwd'si worktree dizininin bir altdizinidir. Böylece `pty_cwd`, `git_toplevel` ve `worktree_path` üç farklı string olur.
 - BEKLENEN GOZLEM: Üç sütun üç farklı değer taşır ve her biri bağımsız oracle'ın karşılık gelen ölçümüyle birebir eşittir.
 - IZIN VERILEN HUKUM: Üç yol kavramı ayrı sütunlarda tutulur ve üretim yolu her birini doğru ölçer. Hüküm izolasyonlu evren için geçerlidir.
@@ -506,6 +553,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-02
 - MADDE: M3
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: İzolasyonlu bir run; PTY cwd'si tam olarak worktree kökündedir, dolayısıyla üç değer aynı string'tir.
 - BEKLENEN GOZLEM: Üç sütun da doludur ve aynı değeri taşır. Hiçbiri NULL değildir, hiçbiri "diğerine eşit olduğu için" atlanmamıştır.
 - IZIN VERILEN HUKUM: Eşitlik birleştirme gerekçesi değildir; üç kavram şemada ayrı kalır.
@@ -514,6 +562,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-03
 - MADDE: M3, M2
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: `isolate:false` ile açılan bir run (UI varsayılanı), gerçek bir git deposunun kökünde.
 - BEKLENEN GOZLEM: `worktree_path` durumu `not_applicable(no-isolation)` ve değeri NULL; `pty_cwd` ve `git_toplevel` `measured` ve dolu, ikisi de oracle ile eşit.
 - IZIN VERILEN HUKUM: İzolasyonsuz evrende worktree kavramı yoktur ve bu, ölçüm başarısızlığından ayrı bir sınıfla kaydedilir.
@@ -522,6 +571,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-04
 - MADDE: M3
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: `isolate:false`, PTY cwd'si repo kökünün birkaç seviye altındaki bir dizin.
 - BEKLENEN GOZLEM: `pty_cwd` verilen altdizini, `git_toplevel` repo kökünü taşır; ikisi farklıdır ve `git_toplevel` oracle'ın `git rev-parse --show-toplevel` çıktısıyla eşittir.
 - IZIN VERILEN HUKUM: `git_toplevel` cwd'nin kopyası değil, git ile ölçülen bir değerdir.
@@ -530,6 +580,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-05
 - MADDE: M3
 - SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
 - GIRDI: P grubunun kullandığı fixture repolarında, oracle git komutları (`rev-parse HEAD`, `rev-parse --abbrev-ref HEAD`, `rev-parse --show-toplevel`, `status --porcelain`) doğrudan çalıştırılır.
 - BEKLENEN GOZLEM: Her komut exit 0 döner ve boş olmayan, beklenen biçimde (40 haneli hex SHA, dal adı, mutlak yol) çıktı üretir.
 - IZIN VERILEN HUKUM: P grubundaki "üretim değeri oracle ile eşit" gözlemleri, iki tarafın da boş olmasından kaynaklanmıyordur.
@@ -538,6 +589,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-06
 - MADDE: M3, M2
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: `isolate:true` ile açılan bir run; ana repo ile worktree farklı dizinlerde.
 - BEKLENEN GOZLEM: `git_toplevel` worktree dizinini gösterir, ana repo kökünü DEĞİL; oracle'ın worktree içinde çalıştırdığı `rev-parse --show-toplevel` ile eşittir.
 - IZIN VERILEN HUKUM: `git_toplevel`, `mainRepoRoot` (`--git-common-dir`) ile aynı şey değildir; ölçülen evren worktree'dir ve hüküm o adla yazılır.
@@ -546,6 +598,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-07
 - MADDE: M3
 - SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
 - GIRDI: P grubunun vakaları, git alt süreç sayacı takılıyken çalıştırılır.
 - BEKLENEN GOZLEM: Run başlangıcı sırasında git alt süreç sayacı sıfırdan büyüktür.
 - IZIN VERILEN HUKUM: P grubu persistence API'sine önceden hazırlanmış değerler yazıp geri okumuyordur; ölçüm fiilen yapılmıştır.
@@ -554,6 +607,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: P-08
 - MADDE: M2
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Aynı ajan kimliği için biri `isolate:false`, diğeri `isolate:true` iki ayrı run açılır.
 - BEKLENEN GOZLEM: İki run'ın `worktree_path` durumları farklıdır (`not_applicable(no-isolation)` ve `measured`) ve `git_toplevel` değerleri farklı dizinleri gösterir. İki kayıt karıştırılmaz.
 - IZIN VERILEN HUKUM: Ölçülen evren run başına kaydedilir; iki run'ın provenance'ı birbirinin yerine okunamaz.
@@ -566,6 +620,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-01
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Bir commit'e detached olarak checkout edilmiş gerçek repo.
 - BEKLENEN GOZLEM: `base_sha` durumu `measured` ve değeri oracle'ın `rev-parse HEAD` çıktısına eşit; `branch` durumu `measured_detached` ve değeri NULL.
 - IZIN VERILEN HUKUM: Detached HEAD'de SHA ölçülebilir, dal ölçülemez; ikisi ayrı sınıflarla kaydedilir.
@@ -574,6 +629,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-02
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Ölçüm, git'in PATH'te bulunamayacağı bir ortamda çalıştırılır (spawn `ENOENT` üretir).
 - BEKLENEN GOZLEM: Her git alanı `failed(git-missing)` durumu ve NULL değer taşır.
 - IZIN VERILEN HUKUM: Git'in yokluğu kendi sınıfıyla kaydedilir, sessiz bir NULL'a dönüşmez.
@@ -582,6 +638,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-03
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Git mevcut ve cwd geçerli bir repo, ancak çalıştırılan git komutu sıfır dışı çıkış kodu döndürür (örn. bozuk `.git` referansı).
 - BEKLENEN GOZLEM: İlgili alan `failed(command-nonzero)` durumu ve NULL değer taşır.
 - IZIN VERILEN HUKUM: Sıfır dışı çıkış, git yokluğundan ve repo olmamaktan ayrı bir sınıftır.
@@ -590,6 +647,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-04
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Git komutu, ölçümün zaman aşımı eşiğini aşacak şekilde geciktirilir.
 - BEKLENEN GOZLEM: İlgili alan `failed(timeout)` durumu ve NULL değer taşır.
 - IZIN VERILEN HUKUM: Zaman aşımı kendi sınıfıyla kaydedilir.
@@ -598,6 +656,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-05
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Git mevcut, ancak cwd hiçbir git deposunun içinde olmayan boş bir dizin.
 - BEKLENEN GOZLEM: Her git alanı `failed(not-a-repo)` durumu ve NULL değer taşır.
 - IZIN VERILEN HUKUM: Repo olmayan bir cwd kendi sınıfıyla kaydedilir.
@@ -606,6 +665,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-06
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: cwd bir bare git deposudur (çalışma ağacı yoktur).
 - BEKLENEN GOZLEM: İlgili alanlar `not_applicable(bare-repo)` durumu ve NULL değer taşır; `failed` ailesinden hiçbir değer yazılmaz.
 - IZIN VERILEN HUKUM: Bare repo bir başarısızlık değil, kavramın uygulanamadığı bir haldir; ancak M6 uyarınca tamamlığı bozar.
@@ -614,6 +674,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-07
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: cwd bir submodule çalışma dizinidir.
 - BEKLENEN GOZLEM: İlgili alanlar `not_applicable(submodule)` durumu ve NULL değer taşır.
 - IZIN VERILEN HUKUM: Submodule kendi uygulanamazlık sınıfıyla kaydedilir.
@@ -622,6 +683,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-08
 - MADDE: M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `failed(no-isolation)` yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: `no-isolation` yalnız `not_applicable` ailesine aittir ve DB bunu uygular.
@@ -630,6 +692,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-09
 - MADDE: M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `failed(bare-repo)` yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: `bare-repo` yalnız `not_applicable` ailesine aittir.
@@ -638,6 +701,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-10
 - MADDE: M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `failed(submodule)` yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: `submodule` yalnız `not_applicable` ailesine aittir.
@@ -646,6 +710,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-11
 - MADDE: M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `failed(measured_detached)` ve `failed(detached)` yazılmaya çalışılır.
 - BEKLENEN GOZLEM: İkisi de reddedilir.
 - IZIN VERILEN HUKUM: `measured_detached` kendi sınıfıdır, bir başarısızlık sebebi değildir.
@@ -654,6 +719,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-12
 - MADDE: M5
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `not_applicable(git-missing)`, `not_applicable(command-nonzero)`, `not_applicable(timeout)`, `not_applicable(not-a-repo)` sırayla yazılmaya çalışılır. Vaka bu dört sebep üzerinde parametrelenir.
 - BEKLENEN GOZLEM: Dördü de reddedilir.
 - IZIN VERILEN HUKUM: Aile ayrımı çift yönlüdür; bir başarısızlık uygulanamazlık gibi kaydedilerek tamamlık bayrağı beyazlatılamaz.
@@ -662,6 +728,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-13
 - MADDE: M5
 - SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
 - GIRDI: D-01, D-03, D-04, D-05, D-06, D-07 fixture ortamlarında git ikilisi doğrudan çağrılır.
 - BEKLENEN GOZLEM: `git --version` her fixture'da exit 0 ve sürüm string'i döndürür.
 - IZIN VERILEN HUKUM: D grubunun sınıflandırma gözlemleri, tüm fixture'ların aslında `git-missing` olmasından kaynaklanmıyordur.
@@ -670,6 +737,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: D-14
 - MADDE: M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Zaman aşımına uğrayan bir git komutu; öldürülen süreç ayrıca sıfır dışı bir çıkış kodu da üretir.
 - BEKLENEN GOZLEM: Kaydedilen sınıf `failed(timeout)`tır, `failed(command-nonzero)` DEĞİLDİR.
 - IZIN VERILEN HUKUM: İki başarısızlık sınıfı çakıştığında kayıt kök sebebi taşır; sıfır dışı çıkış kodu zaman aşımını maskelemez.
@@ -740,6 +808,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-01
 - MADDE: M1
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `base_sha` ölçülmüş bir run açılır, sonra safe quit yapılır.
 - BEKLENEN GOZLEM: `checkpoint_sha` değeri run'ın `base_sha` değerine karakter karakter eşittir. Eşit değilse vaka düşer.
 - IZIN VERILEN HUKUM: Checkpoint SHA'sı run-start değerinin kopyasıdır.
@@ -748,6 +817,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-02
 - MADDE: M1
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: C-01 ile aynı run.
 - BEKLENEN GOZLEM: `checkpoint_sha_source` = `'run-start-copy'`.
 - IZIN VERILEN HUKUM: Checkpoint kendi kaynağını beyan eder; okuyucu bunun bir kopya olduğunu kayıttan öğrenir, koddan çıkarmak zorunda kalmaz.
@@ -756,6 +826,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-03
 - MADDE: M1
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `checkpoint_sha_source` alanına `'measured-at-checkpoint'` yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: v1'de checkpoint anında ölçüm yoktur ve bu kayıt düzeyinde uygulanır; şema değeri tanır ama v1 yazmasına izin vermez.
@@ -764,6 +835,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-04
 - MADDE: M1
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Açık run'ları olan bir uygulama, git alt süreç sayacı takılıyken safe quit yapar. Sayaç quit'ten hemen önce sıfırlanır.
 - BEKLENEN GOZLEM: Quit tamamlandığında sayaç sıfırdır.
 - IZIN VERILEN HUKUM: Safe quit senkron ve gözlem-yapmayan kalır; quit bir git sondasında bloke olamaz.
@@ -772,6 +844,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-05
 - MADDE: M1
 - SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
 - GIRDI: C-04'ün kullandığı aynı git alt süreç sayacı, run başlangıcı sırasında okunur.
 - BEKLENEN GOZLEM: Sayaç sıfırdan büyüktür.
 - IZIN VERILEN HUKUM: C-04'ün sıfır sonucu, sayacın hiç çalışmamasından kaynaklanmıyordur.
@@ -780,6 +853,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-06
 - MADDE: M1, M5
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `base_sha` alanı `failed(not-a-repo)` ile kaydedilmiş bir run, sonra safe quit.
 - BEKLENEN GOZLEM: `checkpoint_sha` durumu `failed(not-a-repo)` ve değeri NULL; `checkpoint_sha_source` = `'run-start-copy'`.
 - IZIN VERILEN HUKUM: Kopya, başarısızlığı da kopyalar; checkpoint bir başarısızlığı boşluğa çevirmez.
@@ -788,6 +862,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-07
 - MADDE: M1, M5
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `worktree_path` alanı `not_applicable(no-isolation)` olan bir run, sonra safe quit.
 - BEKLENEN GOZLEM: Checkpoint tarafındaki karşılık gelen alan aynı sınıfı taşır; `failed` ailesine dönüşmez, `measured` olmaz.
 - IZIN VERILEN HUKUM: Kopyalama sınıf koruyucudur; aile değişimi kopyalama sırasında da yasaktır.
@@ -796,6 +871,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-08
 - MADDE: M1, M4
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `checkpoint_sha` alanına `measured` durumu ve NULL değer; ayrıca `failed(timeout)` durumu ve dolu değer yazılmaya çalışılır.
 - BEKLENEN GOZLEM: İki denemede de yazma reddedilir.
 - IZIN VERILEN HUKUM: Durum-değer ayrılamazlığı checkpoint sütunlarını da kapsar; beyaz liste run-start alanlarına özgü değildir.
@@ -804,6 +880,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: C-09
 - MADDE: M1
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: `checkpoint_sha_source` alanına iki tanımlı değerin dışında bir string (`'copied'`, `''`, `'unknown'`) yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Her denemede yazma reddedilir.
 - IZIN VERILEN HUKUM: Kaynak beyanı kapalı bir kümedir; okuyucu iki değerden birini görmeyi garanti edebilir.
@@ -816,6 +893,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-01
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Yalnız `base_sha` alanı `failed(command-nonzero)`, diğer tüm git alanları `measured` olan bir run.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Tek bir alanın başarısızlığı tamamlığı bozar.
@@ -824,6 +902,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-02
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Yalnız `branch` alanı `failed(command-nonzero)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Kural alan bağımsızdır; `branch` de tamamlığa dahildir.
@@ -832,6 +911,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-03
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Yalnız `pty_cwd` alanı `failed(not-a-repo)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: `pty_cwd` de tamamlığa dahildir.
@@ -840,6 +920,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-04
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Yalnız `git_toplevel` alanı `failed(timeout)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: `git_toplevel` de tamamlığa dahildir.
@@ -848,6 +929,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-05
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Yalnız `worktree_path` alanı `failed(git-missing)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: `worktree_path` de tamamlığa dahildir; `not_applicable(no-isolation)` ile `failed` aynı sonucu vermez.
@@ -856,6 +938,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-06
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Beş git alanının hepsi `measured` ve dolu olan bir run.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: Tam ölçülmüş bir run provenance gerektiren hüküm için kullanılabilir.
@@ -864,6 +947,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-07
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `branch` alanı `measured_detached` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: Detached HEAD tam ölçülmüş bir haldir; dal yokluğu ölçüm eksikliği değildir.
@@ -872,6 +956,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-08
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `worktree_path` alanı `not_applicable(no-isolation)` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: İzolasyonsuz run beklenen bir haldir ve tam sayılır.
@@ -880,6 +965,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-09
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Bir alan `not_applicable(bare-repo)` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Bare repo "ölçülemedi" halidir; aynı `not_applicable` ailesinde olması onu `no-isolation` ile aynı sonuca götürmez.
@@ -888,6 +974,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-10
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: Bir alan `not_applicable(submodule)` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Submodule "ölçülemedi" halidir.
@@ -896,6 +983,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-11
 - MADDE: M6
 - SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Git ölçümünün başarısız olacağı bir ortamda (D-02 fixture'ı) gerçek bir agent spawn edilir.
 - BEKLENEN GOZLEM: Spawn `ok:true` döner, PTY listesinde canlı bir kayıt vardır ve run satırı `provenance_complete=false` taşır.
 - IZIN VERILEN HUKUM: Execution fail-open gerçekten fail-open'dır; ölçüm başarısızlığı çalışmayı engellemez. F grubunun false gözlemleri, run'ın hiç başlamamasından kaynaklanmıyordur.
@@ -904,6 +992,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-12
 - MADDE: M6
 - SINIF: REDDETME
+- DILIM: DILIM 1
 - GIRDI: Alan durumları false gerektirirken `provenance_complete` doğrudan true yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Yazma reddedilir veya türetilmiş değer kazanır; geri okunan değer false'tur.
 - IZIN VERILEN HUKUM: Bayrak mekanik türetilir; bir yazıcı onu alan durumlarından bağımsız olarak beyazlatamaz.
@@ -912,6 +1001,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: F-13
 - MADDE: M6
 - SINIF: KABUL
+- DILIM: DILIM 1
 - GIRDI: `provenance_complete` değeri false ve true olan iki run.
 - BEKLENEN GOZLEM: Run okuma yüzeyi (`getRun` benzeri) her iki run için bayrağı doğru değeriyle döndürür.
 - IZIN VERILEN HUKUM: Faz 1B'nin taahhüdü — bayrağı TAŞINABİLİR kılmak — karşılanmıştır. Bu, bayrağın UYGULANDIĞI anlamına GELMEZ; bkz. AÇIK BORÇ.
@@ -926,6 +1016,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: S-01
 - MADDE: M7
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: `base_sha = X` ile duraklatılmış bir run. Aynı cwd'de repo HEAD'i `Y`ye ilerletilir, sonra run resume edilir.
 - BEKLENEN GOZLEM: Çocuk run'ın `base_sha` değeri `Y`dir, `X` DEĞİLDİR; ve oracle'ın o andaki `rev-parse HEAD` çıktısına eşittir.
 - IZIN VERILEN HUKUM: Devam eden run ebeveyninin git değerlerini devralmaz; kendi ölçümünü yapar. Faz 1A'daki `baseSha: overrides.baseSha ?? null` boşluğu kapanmıştır.
@@ -934,6 +1025,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: S-02
 - MADDE: M7, M5
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: `base_sha` `measured` olan duraklatılmış bir run; resume anında ölçüm başarısız olacak şekilde ortam bozulur (repo dizini kaldırılır).
 - BEKLENEN GOZLEM: Çocuk run `failed(not-a-repo)` + NULL taşır; ebeveynin dolu değeri KOPYALANMAZ.
 - IZIN VERILEN HUKUM: Devralmama kuralı başarısızlık durumunda da geçerlidir; ebeveynin başarısı çocuğun başarısızlığını örtmez.
@@ -942,6 +1034,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: S-03
 - MADDE: M7
 - SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Ebeveyn ve çocuk aynı cwd'de, repo hiç değişmemiş. Git alt süreç sayacı resume'dan hemen önce sıfırlanır.
 - BEKLENEN GOZLEM: Değerler ebeveynle aynı çıkar (repo değişmediği için) ANCAK sayaç sıfırdan büyüktür.
 - IZIN VERILEN HUKUM: Değer eşitliği kopyalamanın kanıtı değildir; ölçüm gerçekten yeniden yapılmıştır.
@@ -950,6 +1043,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: S-04
 - MADDE: M7, M6
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: `provenance_complete = true` olan bir ebeveyn; resume anında ölçümün başarısız olacağı bir ortam.
 - BEKLENEN GOZLEM: Çocuk run `provenance_complete = false` taşır; ebeveynin true'su devralınmaz.
 - IZIN VERILEN HUKUM: Tamamlık bayrağı run başınadır ve zincir boyunca miras alınmaz.
@@ -964,6 +1058,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: R-01
 - MADDE: M9
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: Ölçüm ile PTY spawn arasına kontrollü bir gecikme enjekte edilir. O pencerede, ölçülen cwd'nin işaret ettiği worktree'nin HEAD'i harici bir git komutuyla başka bir commit'e taşınır.
 - BEKLENEN GOZLEM: Kaydedilen provenance YA PTY'nin fiilen açıldığı andaki gerçek HEAD'i gösterir, YA DA `provenance_complete = false` taşır ve ölçüm penceresi kaydedilir. Eski değeri sessizce doğru gibi sunarsa vaka DÜŞER.
 - IZIN VERILEN HUKUM: Yarış penceresinde sistem ya doğru değeri verir ya bilmediğini beyan eder; hiçbir durumda bayat bir değeri PROVEN gibi sunmaz.
@@ -972,6 +1067,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: R-02
 - MADDE: M9
 - SINIF: KABUL
+- DILIM: ATANAMADI
 - GIRDI: Ölçüm anı ile PTY'nin açıldığı an arasındaki kod yolu okunur ve o pencerede cwd'nin işaret ettiği hedefi (worktree kimliği, HEAD, dal) değiştirebilecek TÜM yollar sayılır: aynı süreçteki eşzamanlı spawn'lar, worktree GC/teardown süpürmesi, ephemeral worker watcher, hive router, kullanıcının harici git işlemleri, ajanın kendi git komutları.
 - BEKLENEN GOZLEM: Sayılan her yol için ya adıyla elenmiş bir gerekçe (o yolun bu pencereye giremeyeceğinin kanıtı) ya da R-01 sınıfında koşulabilir bir vaka üretilir. Sayım listesi boş bırakılamaz; "kod öyle görünüyor" gerekçe sayılmaz.
 - IZIN VERILEN HUKUM: Yarışın mümkün OLMADIĞI hükmü ancak bu sayım tamamlanıp her üye elendiğinde kurulabilir. Sayım eksikse hüküm kurulmaz.
@@ -980,6 +1076,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: R-03
 - MADDE: M9
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: R-01 ile aynı gecikme penceresi; bu kez HEAD sabit kalır ve `git switch` ile dal değiştirilir.
 - BEKLENEN GOZLEM: R-01 ile aynı kabul kriteri, `branch` alanı için.
 - IZIN VERILEN HUKUM: Yarış koruması SHA'ya özgü değildir; dal alanı için de geçerlidir.
@@ -988,6 +1085,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: R-04
 - MADDE: M9
 - SINIF: KABUL
+- DILIM: FIXTURE DILIMI
 - GIRDI: R-01 ile aynı gecikme penceresi; bu kez ölçülen worktree `git worktree remove --force` ile kaldırılıp aynı yola yeniden eklenir, böylece yol aynı kalırken worktree KİMLİĞİ değişir.
 - BEKLENEN GOZLEM: R-01 ile aynı kabul kriteri. Yolun değişmemiş olması, kaydın geçerli sayılması için yeterli DEĞİLDİR.
 - IZIN VERILEN HUKUM: Değişmez olan cwd string'idir, işaret ettiği hedef değildir; sistem bu ayrımı gözetir.
@@ -996,6 +1094,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: R-05
 - MADDE: M9
 - SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
 - GIRDI: R-01, R-03, R-04'ün kullandığı gecikme enjeksiyonu açık ve kapalıyken ölçüm-spawn penceresi süresi ölçülür.
 - BEKLENEN GOZLEM: Enjeksiyon açıkken pencere, kapalı hâline göre enjekte edilen süre kadar uzundur; ve pencere sırasında harici git komutunun fiilen çalıştığı bağımsız olarak doğrulanır.
 - IZIN VERILEN HUKUM: R grubunun "yarış gözlenmedi" sonuçları, enjeksiyonun hiç ateşlememesinden kaynaklanmıyordur.
