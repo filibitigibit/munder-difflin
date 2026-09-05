@@ -1088,6 +1088,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M1, M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- GATE BAGIMLILIGI: GATE 3 (enforcement katmanı tanımı)
 - GIRDI: `git_base_sha` alanı `measured` + `'abc123'` olan bir run safe quit ile duraklatılır; sonra `checkpoint_sha` alanına run-start değerinden FARKLI, bağımsız bir değer (`'zzz999'`) yazılmaya çalışılır. `checkpoint_sha` için bir durum sütunu YOKTUR ve aranmaz.
 - BEKLENEN GOZLEM: Yazma reddedilir; `checkpoint_sha` run-start değerine (`'abc123'`) eşit kalır ve `checkpoint_sha_source` = `'run-start-copy'` olarak durur.
 - IZIN VERILEN HUKUM: M4 beyaz listesi YALNIZ M13 alan ailesine uygulanır; `checkpoint_sha` M4'e TABİ DEĞİLDİR, M1'in kopyalama kuralına tabidir ve kendi ölçüm durumu alanı taşımaz. **ENFORCEMENT SINIRI: bu reddi hangi katmanın uygulayacağı BU BELGEDE TANIMLI DEĞİLDİR.** Bu alanda DB CHECK YOKTUR (ölçüldü: `checkpoint_sha_status` sütunu hiçbir yerde tanımlı değil), dolayısıyla **"DB bu yazıyı reddeder" hükmü KURULAMAZ**. Reddi uygulayacak yüzey (persistence API'si mi, trigger mı, başka bir katman mı) ÖLÇÜLMEDİ ve bu vaka onu ÖLÇÜLMEDİ olarak taşır. Bu vaka `checkpoint_dirty_state`'i KAPSAMAZ.
