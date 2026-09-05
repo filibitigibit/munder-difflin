@@ -89,9 +89,22 @@ ataması v3.1'de GIRDI metinleri okunarak yapıldı.
 
 ## Alan adları (plan boyunca sabit)
 
-Git alanları: `base_sha`, `branch`, `pty_cwd`, `git_toplevel`, `worktree_path`.
-Her birinin bir değer sütunu ve bir durum sütunu vardır (M4).
+M13 alan ailesi (Faz 1B'nin ÖLÇTÜĞÜ beş provenance kavramı):
+`git_base_sha` · `git_branch` · `git_toplevel` · `git_pty_cwd` ·
+`git_worktree_path`.
+Her birinin bir değer sütunu ve bir durum sütunu vardır (M4):
+`<alan>` ve `<alan>_status`.
+
+**LEGACY AYRIMI.** Bu adlar Faz 1B'nin ÖLÇTÜĞÜ değerlerdir. Legacy
+sütunlar (`base_sha`, `branch`, `worktree_path`) v2 döneminin
+metadata'sıdır, M13 LEGACY AYRIMI bölümünde tanımlıdır ve bunlarla
+KARIŞTIRILMAZ. Legacy sütunların ölçüm durumu sütunu YOKTUR ve M4
+beyaz listesine TABİ DEĞİLDİR (M4 KAPSAM). **Bir vaka legacy sütunu
+kastediyorsa bunu metninde AÇIKÇA yazar.**
+
 Checkpoint alanları: `checkpoint_sha`, `checkpoint_sha_source`.
+Bunlar M4'e tabi DEĞİLDİR (M4 KAPSAM); M1'in kopyalama kuralına
+tabidirler.
 Türetilmiş bayrak: `provenance_complete`.
 
 ---
@@ -317,21 +330,21 @@ Türetilmiş bayrak: `provenance_complete`.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: "Ölçüldü" beyanı değersiz kaydedilemez.
 
-#### W-03 · measured_detached + NULL (branch) kabul edilir
+#### W-03 · measured_detached + NULL (git_branch) kabul edilir
 - ID: W-03
 - MADDE: M4, M5
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: `branch` alanına `measured_detached` durumu ve NULL değer yazılır.
+- GIRDI: `git_branch` alanına `measured_detached` durumu ve NULL değer yazılır.
 - BEKLENEN GOZLEM: Yazma geçer.
-- IZIN VERILEN HUKUM: Detached HEAD, `branch` için kendi sınıfıyla kaydedilebilir.
+- IZIN VERILEN HUKUM: Detached HEAD, `git_branch` için kendi sınıfıyla kaydedilebilir.
 
 #### W-04 · measured_detached + dolu değer reddedilir
 - ID: W-04
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
-- GIRDI: `branch` alanına `measured_detached` durumu ve boş olmayan bir değer yazılır.
+- GIRDI: `git_branch` alanına `measured_detached` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Detached durumda bir dal adı uydurulup kaydedilemez.
 
@@ -367,7 +380,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
-- GIRDI: `worktree_path` alanına `not_applicable(no-isolation)` durumu ve boş olmayan bir yol yazılır.
+- GIRDI: `git_worktree_path` alanına `not_applicable(no-isolation)` durumu ve boş olmayan bir yol yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: "Uygulanamaz" beyanı bir değerle birlikte kaydedilemez; izolasyonsuz bir run'a worktree yolu iliştirilemez.
 
@@ -579,7 +592,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M3, M2
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
-- GIRDI: İzolasyonlu bir run; PTY cwd'si worktree dizininin bir altdizinidir. Böylece `pty_cwd`, `git_toplevel` ve `worktree_path` üç farklı string olur.
+- GIRDI: İzolasyonlu bir run; PTY cwd'si worktree dizininin bir altdizinidir. Böylece `git_pty_cwd`, `git_toplevel` ve `git_worktree_path` üç farklı string olur.
 - BEKLENEN GOZLEM: Üç sütun üç farklı değer taşır ve her biri bağımsız oracle'ın karşılık gelen ölçümüyle birebir eşittir.
 - IZIN VERILEN HUKUM: Üç yol kavramı ayrı sütunlarda tutulur ve üretim yolu her birini doğru ölçer. Hüküm izolasyonlu evren için geçerlidir.
 
@@ -592,13 +605,13 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - BEKLENEN GOZLEM: Üç sütun da doludur ve aynı değeri taşır. Hiçbiri NULL değildir, hiçbiri "diğerine eşit olduğu için" atlanmamıştır.
 - IZIN VERILEN HUKUM: Eşitlik birleştirme gerekçesi değildir; üç kavram şemada ayrı kalır.
 
-#### P-03 · izolasyon yokken worktree_path not_applicable, diğer ikisi dolu
+#### P-03 · izolasyon yokken git_worktree_path not_applicable, diğer ikisi dolu
 - ID: P-03
 - MADDE: M3, M2
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
 - GIRDI: `isolate:false` ile açılan bir run (UI varsayılanı), gerçek bir git deposunun kökünde.
-- BEKLENEN GOZLEM: `worktree_path` durumu `not_applicable(no-isolation)` ve değeri NULL; `pty_cwd` ve `git_toplevel` `measured` ve dolu, ikisi de oracle ile eşit.
+- BEKLENEN GOZLEM: `git_worktree_path` durumu `not_applicable(no-isolation)` ve değeri NULL; `git_pty_cwd` ve `git_toplevel` `measured` ve dolu, ikisi de oracle ile eşit.
 - IZIN VERILEN HUKUM: İzolasyonsuz evrende worktree kavramı yoktur ve bu, ölçüm başarısızlığından ayrı bir sınıfla kaydedilir.
 
 #### P-04 · pty_cwd altdizin iken git_toplevel repo kökünü gösterir
@@ -643,7 +656,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
 - GIRDI: Aynı ajan kimliği için biri `isolate:false`, diğeri `isolate:true` iki ayrı run açılır.
-- BEKLENEN GOZLEM: İki run'ın `worktree_path` durumları farklıdır (`not_applicable(no-isolation)` ve `measured`) ve `git_toplevel` değerleri farklı dizinleri gösterir. İki kayıt karıştırılmaz.
+- BEKLENEN GOZLEM: İki run'ın `git_worktree_path` durumları farklıdır (`not_applicable(no-isolation)` ve `measured`) ve `git_toplevel` değerleri farklı dizinleri gösterir. İki kayıt karıştırılmaz.
 - IZIN VERILEN HUKUM: Ölçülen evren run başına kaydedilir; iki run'ın provenance'ı birbirinin yerine okunamaz.
 
 ---
@@ -656,7 +669,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
 - GIRDI: Bir commit'e detached olarak checkout edilmiş gerçek repo.
-- BEKLENEN GOZLEM: `base_sha` durumu `measured` ve değeri oracle'ın `rev-parse HEAD` çıktısına eşit; `branch` durumu `measured_detached` ve değeri NULL.
+- BEKLENEN GOZLEM: `git_base_sha` durumu `measured` ve değeri oracle'ın `rev-parse HEAD` çıktısına eşit; `git_branch` durumu `measured_detached` ve değeri NULL.
 - IZIN VERILEN HUKUM: Detached HEAD'de SHA ölçülebilir, dal ölçülemez; ikisi ayrı sınıflarla kaydedilir.
 
 #### D-02 · git binary yok
@@ -843,8 +856,8 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M1
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: `base_sha` ölçülmüş bir run açılır, sonra safe quit yapılır.
-- BEKLENEN GOZLEM: `checkpoint_sha` değeri run'ın `base_sha` değerine karakter karakter eşittir. Eşit değilse vaka düşer.
+- GIRDI: `git_base_sha` ölçülmüş bir run açılır, sonra safe quit yapılır.
+- BEKLENEN GOZLEM: `checkpoint_sha` değeri run'ın `git_base_sha` değerine karakter karakter eşittir. Eşit değilse vaka düşer.
 - IZIN VERILEN HUKUM: Checkpoint SHA'sı run-start değerinin kopyasıdır.
 
 #### C-02 · checkpoint_sha_source run-start-copy'dir
@@ -888,7 +901,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M1, M5
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: `base_sha` alanı `failed(not-a-repo)` ile kaydedilmiş bir run, sonra safe quit.
+- GIRDI: `git_base_sha` alanı `failed(not-a-repo)` ile kaydedilmiş bir run, sonra safe quit.
 - BEKLENEN GOZLEM: `checkpoint_sha` durumu `failed(not-a-repo)` ve değeri NULL; `checkpoint_sha_source` = `'run-start-copy'`.
 - IZIN VERILEN HUKUM: Kopya, başarısızlığı da kopyalar; checkpoint bir başarısızlığı boşluğa çevirmez.
 
@@ -897,7 +910,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M1, M5
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: `worktree_path` alanı `not_applicable(no-isolation)` olan bir run, sonra safe quit.
+- GIRDI: `git_worktree_path` alanı `not_applicable(no-isolation)` olan bir run, sonra safe quit.
 - BEKLENEN GOZLEM: Checkpoint tarafındaki karşılık gelen alan aynı sınıfı taşır; `failed` ailesine dönüşmez, `measured` olmaz.
 - IZIN VERILEN HUKUM: Kopyalama sınıf koruyucudur; aile değişimi kopyalama sırasında da yasaktır.
 
@@ -923,23 +936,23 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 
 # GRUP F — M6 provenance_complete
 
-#### F-01 · base_sha failed olduğunda bayrak false
+#### F-01 · git_base_sha failed olduğunda bayrak false
 - ID: F-01
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: Yalnız `base_sha` alanı `failed(command-nonzero)`, diğer tüm git alanları `measured` olan bir run.
+- GIRDI: Yalnız `git_base_sha` alanı `failed(command-nonzero)`, diğer tüm git alanları `measured` olan bir run.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Tek bir alanın başarısızlığı tamamlığı bozar.
 
-#### F-02 · branch failed olduğunda bayrak false
+#### F-02 · git_branch failed olduğunda bayrak false
 - ID: F-02
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: Yalnız `branch` alanı `failed(command-nonzero)`, diğerleri `measured`.
+- GIRDI: Yalnız `git_branch` alanı `failed(command-nonzero)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
-- IZIN VERILEN HUKUM: Kural alan bağımsızdır; `branch` de tamamlığa dahildir.
+- IZIN VERILEN HUKUM: Kural alan bağımsızdır; `git_branch` de tamamlığa dahildir.
 
 #### F-03 · pty_cwd failed olduğunda bayrak false
 - ID: F-03
@@ -959,14 +972,14 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: `git_toplevel` de tamamlığa dahildir.
 
-#### F-05 · worktree_path failed olduğunda bayrak false
+#### F-05 · git_worktree_path failed olduğunda bayrak false
 - ID: F-05
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: Yalnız `worktree_path` alanı `failed(git-missing)`, diğerleri `measured`.
+- GIRDI: Yalnız `git_worktree_path` alanı `failed(git-missing)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
-- IZIN VERILEN HUKUM: `worktree_path` de tamamlığa dahildir; `not_applicable(no-isolation)` ile `failed` aynı sonucu vermez.
+- IZIN VERILEN HUKUM: `git_worktree_path` de tamamlığa dahildir; `not_applicable(no-isolation)` ile `failed` aynı sonucu vermez.
 
 #### F-06 · tüm alanlar measured ise bayrak true
 - ID: F-06
@@ -982,7 +995,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: `branch` alanı `measured_detached` + NULL, diğerleri `measured`.
+- GIRDI: `git_branch` alanı `measured_detached` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: Detached HEAD tam ölçülmüş bir haldir; dal yokluğu ölçüm eksikliği değildir.
 
@@ -991,7 +1004,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: `worktree_path` alanı `not_applicable(no-isolation)` + NULL, diğerleri `measured`.
+- GIRDI: `git_worktree_path` alanı `not_applicable(no-isolation)` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: İzolasyonsuz run beklenen bir haldir ve tam sayılır.
 
@@ -1051,8 +1064,8 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M7
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
-- GIRDI: `base_sha = X` ile duraklatılmış bir run. Aynı cwd'de repo HEAD'i `Y`ye ilerletilir, sonra run resume edilir.
-- BEKLENEN GOZLEM: Çocuk run'ın `base_sha` değeri `Y`dir, `X` DEĞİLDİR; ve oracle'ın o andaki `rev-parse HEAD` çıktısına eşittir.
+- GIRDI: `git_base_sha = X` ile duraklatılmış bir run. Aynı cwd'de repo HEAD'i `Y`ye ilerletilir, sonra run resume edilir.
+- BEKLENEN GOZLEM: Çocuk run'ın `git_base_sha` değeri `Y`dir, `X` DEĞİLDİR; ve oracle'ın o andaki `rev-parse HEAD` çıktısına eşittir.
 - IZIN VERILEN HUKUM: Devam eden run ebeveyninin git değerlerini devralmaz; kendi ölçümünü yapar. Faz 1A'daki `baseSha: overrides.baseSha ?? null` boşluğu kapanmıştır.
 
 #### S-02 · ebeveyn measured, çocuk failed ise çocuk failed taşır
@@ -1060,7 +1073,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M7, M5
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
-- GIRDI: `base_sha` `measured` olan duraklatılmış bir run; resume anında ölçüm başarısız olacak şekilde ortam bozulur (repo dizini kaldırılır).
+- GIRDI: `git_base_sha` `measured` olan duraklatılmış bir run; resume anında ölçüm başarısız olacak şekilde ortam bozulur (repo dizini kaldırılır).
 - BEKLENEN GOZLEM: Çocuk run `failed(not-a-repo)` + NULL taşır; ebeveynin dolu değeri KOPYALANMAZ.
 - IZIN VERILEN HUKUM: Devralmama kuralı başarısızlık durumunda da geçerlidir; ebeveynin başarısı çocuğun başarısızlığını örtmez.
 
@@ -1112,7 +1125,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
 - GIRDI: R-01 ile aynı gecikme penceresi; bu kez HEAD sabit kalır ve `git switch` ile dal değiştirilir.
-- BEKLENEN GOZLEM: R-01 ile aynı kabul kriteri, `branch` alanı için.
+- BEKLENEN GOZLEM: R-01 ile aynı kabul kriteri, `git_branch` alanı için.
 - IZIN VERILEN HUKUM: Yarış koruması SHA'ya özgü değildir; dal alanı için de geçerlidir.
 
 #### R-04 · ölçüm ile spawn arasındaki pencerede worktree silinip yeniden oluşturulur
