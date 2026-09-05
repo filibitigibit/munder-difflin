@@ -53,7 +53,7 @@ kuruluş sebebi budur.
 | `docs/phase-1b/` commit sayısı | **11** | git |
 | sözleşme madde sayısı seyri | 8 → 12 (v2) → **14** (v3.5) | git |
 | vaka sayısı seyri | 80 → 99 (v2) → **107** (v3) | git |
-| `GATE BAGIMLILIGI` taşıyan vaka | 0 (v3.8'e dek) → 3 (v3.9) → **4** (bu tur) | git |
+| `GATE BAGIMLILIGI` taşıyan vaka | 0 (v3.8'e dek) → 3 (v3.9) → 4 (LEDGER turu) → **5** | git |
 | commit üretmeyen sürüm | **v3.7 yok** (v3.6 → v3.8) | git |
 
 **TUR SAYISI GİT'TEN ÖLÇÜLEMEZ.** Commit üretmeyen turlar depoda iz
@@ -133,12 +133,23 @@ Değerler: `AÇIK` · `KAPALI` · `ÖLÇÜLEMEDİ-RECONSTRUCTION`.
 | T-7 | U-05 boş çıktı eşlemesi | "boş çıktı = meşru yok / unusable" kararı | GATE 2 | fixture dilimi | **AÇIK** (`bu eşleme TANIMSIZDIR`) | repo |
 | T-8 | denetlenmemiş bağ | madde çiftlerinin denetlenmesi | hiçbiri (görünürlük metriği) | her tur raporlanır | **AÇIK — 80/91** (11 denetlenmiş) | repo |
 | T-9 | hive `log.jsonl` +5 satırı | sahibin kararı (geri al / kabul et) | hiçbiri | sahip karar verdiğinde | **AÇIK** (+5 / −0) | git |
+| T-10 | C-03 enforcement katmanı — `checkpoint_sha_source` reddi | reddi uygulayacak yüzeyin adıyla belirlenmesi | **GATE 3** | C-03 koşulmadan önce | **AÇIK** — tetikleyici bu turda vakaya YAZILDI | repo |
+| T-11 | `provenance_complete` sürdürme mekanizması — generated column mu, trigger mı, uygulama katmanı mı | mekanizmanın ADIYLA seçilmesi | **GATE 1 (yeni engel)** | DİLİM 1 göçü yazılmadan ÖNCE | **AÇIK** — bu turda ölçüldü; 17 vakanın hiçbiri mekanizma adı taşımıyor | repo |
 
 **T-8 İKİYE AYRILIR:** bağ borcunun kendisi **AÇIK** (80/91); bu borcu
 YANLIŞ ÖLÇEN aracın kusuru **KAPALI** (bkz. BÖLÜM 4, A-1).
 
-**Hiçbir kalem KAPALI çıkmadı.** Dokuz kalemin dokuzu da bugün repo
+**Hiçbir kalem KAPALI çıkmadı.** ON BİR kalemin on biri de repo
 kanıtıyla açık doğrulandı; hiçbiri "otomatik açık" sayılmadı.
+
+🔴 **T-11 DİĞERLERİNDEN FARKLIDIR:** bir DİLİM 1 YAPISINI (şema göçü,
+12 sütun) belirsiz bırakır. Diğer on kalem DİLİM 1 kodunu yazmayı
+engellemez; T-11 ENGELLER.
+
+**KAPSAYICI ŞARTA DAYANAN KALEMLER (TEST-PLAN kayıt disiplini gereği
+ADIYLA):** T-4 (`checkpoint_dirty_state`), T-6 (C-08), T-10 (C-03) —
+üçü de GATE 3'ün "tüm belirsizlikler kapalı" kapsayıcı şartına
+bağlıdır ve bu defterde ADIYLA sayılır.
 
 ---
 
@@ -195,6 +206,36 @@ Deploy, Execution Plane tarafından çalıştırılır ve **en az** şu kanıtı
 - nihai deploy durumu
 
 **Telefondan VPS'e doğrudan SSH YOK.**
+
+### OR-3 · PROJE BAĞIMSIZLIĞI
+
+**Durum: NOT IMPLEMENTED. Faz 1B gate'lerine DAHİL DEĞİLDİR.**
+**Vade: Project Context sınırının fiilen ihtiyaç duyulduğu ilk faz —
+en geç Context Compiler.**
+
+Mission Control **HİÇBİR ZAMAN** Komşu'ya özel tasarlanmayacaktır.
+Komşu **ilk production proje ve ilk doğrulama sahasıdır** — ürünün
+kendisi DEĞİLDİR.
+
+| katman | içerik |
+|---|---|
+| **CORE** (proje bağımsız) | orchestration · telemetry · evidence modeli · audit · decision registry · approval policy · memory sınıfları · deployment runner · Control Plane |
+| **PROJECT CONTEXT** (projeye özel, core'a **GÖMÜLMEZ**) | anayasa · hafıza · policy · repo yolları · CI/CD · deploy hedefleri · teknoloji seçimleri · test politikaları · secret referansları |
+
+Her proje **KENDİ** hafızasına sahiptir. Bir projenin mimari kararı
+başka projeye **SIZMAZ**. Mission Control'ün kendi sistem hafızası
+proje hafızalarından **AYRIDIR**. Yeni projeler aynı Mission Control
+örneğine eklenebilmelidir.
+
+🔴 **GEREKÇE — NEDEN ŞİMDİ:** bu sınır geç fark edilirse Komşu'ya özel
+yollar, kurallar ve varsayımlar core'a kök salar ve sökülmesi ayrı bir
+proje hâline gelir. **Karar bugün bedava, yarın pahalı.**
+
+🔴 **BUGÜNKÜ KAPSAM SINIRI:** Faz 1B'nin şema, göç ve ölçüm yolu
+Munder'in mevcut `runs` tablosu üzerinde çalışıyor ve o tablo proje
+bağımsızdır. Bu gereksinim, Faz 1B'de yazılacak hiçbir şeyi **BUGÜN
+DEĞİŞTİRMEZ**. Ama ilerideki her katman için bir kabul ölçütüdür:
+**"bu kod proje adını biliyor mu?"**
 
 ---
 

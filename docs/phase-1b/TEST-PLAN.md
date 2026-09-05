@@ -143,6 +143,27 @@ değerlendirildi:
 **6 yapının 6'sı için cevap HAYIR.** C-07 Gate 1'i kapatmaz; ait
 olduğu gate `GATE BAGIMLILIGI` alanında YAZILIDIR (GATE 2).
 
+🔴 **SONRAKİ TURDA ÖLÇÜLDÜ — YENİ DİLİM 1 ENGELİ (F-12).**
+`provenance_complete`'in TÜRETME KURALI M6'da tam tanımlıdır, ama
+onu SÜRDÜREN MEKANİZMA külliyatta HİÇBİR YERDE adlandırılmamıştır
+(ölçüldü: alanı anan **17 vakanın hiçbiri** bir mekanizma adı
+taşımıyor; `GENERATED` sözcüğünün tek geçişi M4 Invaryant B
+hakkındadır, bu alan hakkında değil). Üç aday — generated column ·
+trigger · uygulama katmanı — **ÜÇ FARKLI `ADD COLUMN` ifadesi**
+üretir. Bu, DİLİM 1 kapsamındaki **şema göçünü** ve **12 sütunun**
+tanımını BELİRSİZ BIRAKIR.
+
+**GATE 1'İN YAZILI ŞARTI BUNU GÖRMEZ:** F-12 bir ÇELİŞKİ değil,
+bir BELİRSİZLİKTİR ve bu plan "hiçbir gate belirsizliği ölçmez"
+der. Dolayısıyla şart harfiyen hâlâ **0** verir.
+
+🔴 **AMA GATE 1'İN ANLAMI BUGÜN GEÇERSİZDİR.** Gate 1'in yazılı
+anlamı "DİLİM 1 kodunu yasaklayan BİLİNEN bir engel yok"tur; böyle
+bir engel ÖLÇÜLDÜ. Şart, ölçtüğü riskten DAR yazılmıştır.
+**Gate 1 bu tespitle KENDİLİĞİNDEN kapanmaz** — belirsizliğin gate
+kapatıp kapatmayacağı bir CTO kararıdır ve bu tur o kararı VERMEZ.
+Kalem LEDGER'da **T-11** olarak ADIYLA kayıtlıdır.
+
 **BU ÖLÇÜM NEYİ KANITLAMIYOR:** çelişki taraması İKİ BELGE üzerinde
 DESEN tabanlıdır (checkpoint öznesi · legacy ad · tanımsız madde
 atfı · belirsizlik imleri). Hiçbir desene uymayan SEMANTİK bir
@@ -171,6 +192,34 @@ daraltmak VARSAYIM olurdu.
 **DURUM: KAPALI.**
 
 **37 tanımsız hücre çözülmeden "Faz 1B tamamlandı" DENMEZ.**
+
+#### KAPSAYICI ŞART VE SAYILABİLİRLİK
+
+"Tüm belirsizlikler kapalı" gibi bir **kapsayıcı şart**, bir borcu
+**MANTIKSAL OLARAK KAPSAR.** Sorun kapsayıp kapsamaması DEĞİLDİR.
+
+Sorun şudur: borç **ADIYLA** kayıtlı değilse, o borcun **VARLIĞI,
+VADESİ ve KAPANIŞI** bağımsız olarak **SAYILAMAZ ve DOĞRULANAMAZ.**
+
+🔴 **Bu iki ayrı eksendir ve karıştırılmaz:**
+
+| eksen | ne söyler |
+|---|---|
+| **mantıksal kapsama** | kapsayıcı şart borcu içerir |
+| **sayılabilirlik** | borcun izlenebilir olması |
+
+**KURAL:** bir kalemin `GATE BAGIMLILIGI` bir **KAPSAYICI** şarta
+dayanıyorsa, o kalem **LEDGER'ın vade defterinde ADIYLA yer
+ALMALIDIR.** Kapsayıcı şart, defterdeki adlı kaydın yerine **GEÇMEZ**
+— ama onu **geçersiz de kılmaz.**
+
+🔴 **Bu kural bir gate ŞARTI DEĞİLDİR; KAYIT DİSİPLİNİDİR.** Bir
+kalemin defterde adının bulunmaması hiçbir gate'i kapatmaz; yalnız o
+borcun görünmez olduğunu gösterir.
+
+**BUGÜN KAPSAYICI ŞARTA DAYANAN KALEMLER:** GATE 3'ün "tüm
+belirsizlikler kapalı" şartına bağlı olan **C-03** ve **C-08**.
+İkisi de LEDGER vade defterinde ADIYLA kayıtlıdır.
 
 ---
 
@@ -1042,9 +1091,10 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M1
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- GATE BAGIMLILIGI: GATE 3 (enforcement katmanı tanımı)
 - GIRDI: `checkpoint_sha_source` alanına `'measured-at-checkpoint'` yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Yazma reddedilir.
-- IZIN VERILEN HUKUM: v1'de checkpoint anında ölçüm yoktur ve bu kayıt düzeyinde uygulanır; şema değeri tanır ama v1 yazmasına izin vermez.
+- IZIN VERILEN HUKUM: v1'de checkpoint anında ölçüm yoktur ve bu kayıt düzeyinde uygulanır; şema değeri tanır ama v1 yazmasına izin vermez. **ENFORCEMENT SINIRI — C-08 İLE AYNI SINIF:** "kayıt düzeyi" bir DÜZEY söyler, bir MEKANİZMA söylemez; bu belgede TANIMLI BİR TERİM DEĞİLDİR (ölçüldü: tüm külliyatta yalnız bu satırda geçiyor). Reddi DİLİM 1'in ürettiği altı yapıdan hiçbiri üretemez: M4 yapısal CHECK yalnız M13 ailesine uygulanır, OLD→NEW trigger M13 değer/durum çiftlerini bağlar, ve bu vakanın kendi metni ("şema değeri TANIR") bir CHECK'in reddi üretmesini DIŞLAR. **Reddi uygulayacak yüzey ÖLÇÜLMEDİ.** **GATE 1'İ BLOKE ETMEZ:** CHECK'in iki değeri de tanıması gerektiği bu vakadan ve C-09'dan BELİRLENİR, dolayısıyla DİLİM 1 şeması belirsiz KALMAZ. **GATE 3 açılmadan KOŞULAMAZ.**
 
 #### C-04 · quit yolunda git süreci başlatılmaz
 - ID: C-04

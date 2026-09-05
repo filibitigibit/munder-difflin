@@ -546,7 +546,9 @@ taşıyanlar DEĞİL, aynı varsayıma dayananlardır.
 
 **ÖLÇÜLEN GEREKÇE:** M13 ihdas edildiğinde M3 ve M4 geride kaldı
 (birinci tekrar). C-08 düzeltildiğinde C-06 ve C-07 geride kaldı
-(ikinci tekrar). Aynı hata sınıfı iki kez, iki tur arayla.
+(ikinci tekrar). C-07 düzeltildiğinde C-08 geride kaldı, C-08
+düzeltildiğinde C-03 geride kaldı (**üçüncü tekrar**). Aynı hata
+sınıfı ÜÇ KEZ.
 
 **SINIR:** ad-tabanlı tarama bu sınıfı TAM GÖREMEZ — C-07 hiçbir
 `checkpoint_` adı taşımadan çelişiyordu. Komşu taraması ANLAM
@@ -561,9 +563,29 @@ METİN okunur.
 Bu bir ASGARİDİR, tamlık değil. Kalıp araması bu yordamın YERİNE
 GEÇMEZ; kalıp araması yalnız nereye BAKILACAĞINI daraltır.
 
+### FİLTRE HATASI — ÖLÇÜLDÜ (üç uygulama)
+
+Komşu taraması düzeltilen kalemin **KENDİ SEBEBİNE** göre
+daraltılamaz. `"C-07 ile aynı bağımlılığı taşıyan vaka"` filtresi
+**C-08'i kaçırdı**; aynı filtre **C-03'ü de kaçırırdı**.
+
+**DOĞRU FİLTRE, alanın kodladığı GENEL ÖZELLİKTİR:**
+
+> "çözülmemiş bir engel taşıyıp `GATE BAGIMLILIGI` kayıtlı olmayan
+> kalem"
+
+**Sebep farklı olabilir; EKSİK OLAN ŞEY AYNIDIR.**
+
+🔴 **BU DÜZELTME M14'Ü TAM YAPMAZ.** Üç uygulamada üç örnek bulundu ve
+üçüncüsü ilk ikisinin kaçırdığı bir sınıftı. M14 tamlık iddiası
+KURMAZ ve bu filtre de KURMAZ.
+
 **M14 TAMLIK İDDİASI KURMAZ.** Farklı sözcüklerle yazılmış aynı
 varsayım bu yordamla da görülmeyebilir. Amaç hatayı imkânsız kılmak
-değil, AYNI HATANIN ÜÇÜNCÜ KEZ tekrarlanma olasılığını düşürmektir.
+değil, AYNI HATANIN BİR SONRAKİ tekrarının olasılığını düşürmektir.
+**Sayı yazılmaz:** "üçüncü kez" gibi sabit bir sayı, o tekrar
+gerçekleştiğinde maddeyi kendi ölçümüyle çelişir hâle getirir —
+üçüncü tekrar ÖLÇÜLDÜ (bkz. ÖLÇÜLEN GEREKÇE).
 
 ---
 
