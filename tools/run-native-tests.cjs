@@ -30,7 +30,8 @@ const ROOT = path.join(__dirname, '..');
 const FILES = [
   'test/native/run-store.test.cjs',
   'test/native/run-migration.test.cjs',
-  'test/native/safe-quit.test.cjs'
+  'test/native/safe-quit.test.cjs',
+  'test/native/run-provenance.test.cjs'
 ];
 
 function electronBinary() {

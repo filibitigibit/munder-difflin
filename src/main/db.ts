@@ -18,7 +18,7 @@
 import Database from 'better-sqlite3';
 import { app } from 'electron';
 import { join } from 'node:path';
-import { RunStore, applyRunSchema } from './runs';
+import { RunStore, applyRunSchema, applyProvenanceSchema } from './runs';
 
 /** A captured user prompt, as returned to the renderer (camelCase columns). */
 export interface CommandHistoryRow {
@@ -73,6 +73,12 @@ const MIGRATIONS: Array<(db: Database.Database) => void> = [
   // that module is Electron-free and therefore directly testable.
   (db) => {
     applyRunSchema(db);
+  },
+  // → user_version 3 (Mission Control Phase 1B, slice 1): git provenance on
+  // `runs`. Additive ALTER TABLE ADD COLUMN only — no table rebuild, so rows
+  // keep their rowids and every legacy column is left exactly as it was.
+  (db) => {
+    applyProvenanceSchema(db);
   }
 ];
 

@@ -297,6 +297,112 @@ export function applyRunSchema(db: BetterSqlite3.Database): void {
   `);
 }
 
+/**
+ * Mission Control Phase 1B — SLICE 1: git provenance on `runs`.
+ *
+ * Twelve additive columns (M13's eleven + M1's `checkpoint_sha_source`), applied
+ * with ALTER TABLE ADD COLUMN so rows are never copied and rowids never move
+ * (M10 GOC SEKLI). SQLite has no ALTER TABLE ADD CONSTRAINT, but ADD COLUMN
+ * accepts a COLUMN-LEVEL CHECK that references another column — which is why the
+ * value columns are added before the status columns that constrain them.
+ *
+ * Enforcement is deliberately SPLIT, because one layer cannot do both jobs:
+ *   - Invariant A (which status may sit next to which value) — CHECK. A CHECK
+ *     sees only the finished row.
+ *   - Invariant B (status and value may not move independently) — BEFORE UPDATE
+ *     trigger. A CHECK cannot see OLD, so a value-only UPDATE that lands on a
+ *     legal row would sail past it (that is exactly what W-22 pins down).
+ *
+ * `provenance_complete` is a VIRTUAL generated column rather than a stored one:
+ * a stored generated column cannot be added to a table that already has rows,
+ * and a plain column would carry a default that reads "complete" even when no
+ * mechanism is maintaining it.
+ */
+export function applyProvenanceSchema(db: BetterSqlite3.Database): void {
+  const existing = new Set(
+    (db.prepare('SELECT name FROM pragma_table_xinfo(?)').all('runs') as Array<{ name: string }>)
+      .map((r) => r.name)
+  );
+  const addColumn = (name: string, ddl: string): void => {
+    if (existing.has(name)) return;
+    db.exec(`ALTER TABLE runs ADD COLUMN ${ddl}`);
+    existing.add(name);
+  };
+
+  // Values first: the status CHECKs below reference them by name.
+  for (const f of PROVENANCE_FIELDS) addColumn(f, `${f} TEXT`);
+
+  for (const f of PROVENANCE_FIELDS) {
+    // `measured_detached` is branch-only (M13): a detached HEAD has no branch
+    // name, and the concept simply does not exist for a path or a sha.
+    const detached = f === 'git_branch'
+      ? `OR (${f}_status = 'measured_detached' AND ${f} IS NULL)`
+      : '';
+    addColumn(`${f}_status`, `${f}_status TEXT NOT NULL DEFAULT 'never_measured' CHECK (
+      (${f}_status = 'measured' AND ${f} IS NOT NULL AND ${f} <> '')
+      ${detached}
+      OR (${f}_status IN (${VALUE_MUST_BE_NULL.map(q).join(', ')}) AND ${f} IS NULL)
+    )`);
+  }
+
+  addColumn('checkpoint_sha_source', `checkpoint_sha_source TEXT CHECK (
+    checkpoint_sha_source IS NULL
+    OR checkpoint_sha_source IN ('run-start-copy', 'measured-at-checkpoint')
+  )`);
+
+  addColumn('provenance_complete',
+    `provenance_complete INTEGER GENERATED ALWAYS AS (${completeExpression()}) VIRTUAL`);
+
+  // Invariant B. One trigger per field so the abort message names the field that
+  // was torn apart, rather than making the caller guess which of five it was.
+  for (const f of PROVENANCE_FIELDS) {
+    db.exec(`
+      CREATE TRIGGER IF NOT EXISTS runs_couple_${f} BEFORE UPDATE ON runs FOR EACH ROW
+      WHEN (OLD.${f}_status IS NOT NEW.${f}_status) <> (OLD.${f} IS NOT NEW.${f})
+      BEGIN SELECT RAISE(ABORT, '${f}: status and value cannot change independently'); END;
+    `);
+  }
+}
+
+/** The five provenance concepts (M13). Each has a value column and a status column. */
+const PROVENANCE_FIELDS = [
+  'git_base_sha',
+  'git_branch',
+  'git_toplevel',
+  'git_pty_cwd',
+  'git_worktree_path'
+] as const;
+
+/** Statuses that REQUIRE a NULL value: nothing was measured, so there is nothing
+ *  to record. The reason travels inside the string — there is no separate reason
+ *  column, so a NULL reason cannot slip through `IN (...)` as UNKNOWN. */
+const VALUE_MUST_BE_NULL = [
+  'never_measured',
+  'failed(git-missing)',
+  'failed(command-nonzero)',
+  'failed(timeout)',
+  'failed(not-a-repo)',
+  'failed(unusable-output)',
+  'not_applicable(no-isolation)',
+  'not_applicable(bare-repo)',
+  'not_applicable(submodule)'
+];
+
+/** Statuses that leave provenance COMPLETE (M6). Everything else breaks it —
+ *  including `not_applicable(bare-repo)` and `not_applicable(submodule)`, which
+ *  are "could not measure", not "nothing to measure". */
+const COMPLETENESS_PRESERVING = ['measured', 'measured_detached', 'not_applicable(no-isolation)'];
+
+function q(s: string): string { return `'${s}'`; }
+
+/** M6's derivation, as one expression: complete only when EVERY field is in a
+ *  completeness-preserving state. */
+function completeExpression(): string {
+  const ok = COMPLETENESS_PRESERVING.map(q).join(', ');
+  const clauses = PROVENANCE_FIELDS.map((f) => `${f}_status IN (${ok})`).join(' AND ');
+  return `CASE WHEN ${clauses} THEN 1 ELSE 0 END`;
+}
+
 /** Normalize "not supplied" and "explicitly unknown" to the same NULL. */
 function orNull<T>(v: T | null | undefined): T | null {
   return v === undefined ? null : v;
