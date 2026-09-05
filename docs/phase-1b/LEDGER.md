@@ -164,6 +164,7 @@ Değerler: `AÇIK` · `KAPALI` · `ÖLÇÜLEMEDİ-RECONSTRUCTION`.
 | T-16 | DENETÇİ KÖRLÜĞÜ — denetime enjekte edilmiş kontrollü kusur YOK | denetçiye kontrollü bir kusur enjekte edilmesi | hiçbiri | denetim kalitesi hakkında hüküm kurulmadan ÖNCE | **AÇIK** — hiç ölçülmedi | ÖLÇÜLMEDİ |
 | T-17 | SEBEP AYIRT EDİLEMEZLİĞİ — farklı sebepler aynı gözlemi üretiyor (`git-missing` ≡ var-olmayan cwd; `timeout` ≡ `command-nonzero`) | üreticinin beş sebebi birbirinden ayırabilecek bir ölçüm yolu tanımlaması | **GATE 2 SONRASI implementation kalemi — Gate 2'nin AÇILMA şartı DEĞİL** | üretici yazılırken | **AÇIK** | ölçüm (PROBE-RESULTS BLOK 4) |
 | T-18 | İZOLASYON YÖNETİCİSİ FAILED-SINIFI ÖLÇÜMÜ | `git_worktree_path` ÜRETİM OPERASYONUNUN beş `failed` sınıfı açısından ölçülmesi | **BESLEYİCİ (GATE 2) — Gate 2'ye BAĞIMLI DEĞİL** | GATE 2'den ÖNCE, yalnız ölçüm amaçlı ayrı tur | **AÇIK** | — |
+| T-21 | ALANLAR ARASI ZAMAN KAYMASI (intra-measurement skew) — beş alan farklı anlarda ölçülürse kaydedilen satır kendi içinde farklı anlardan bilgi taşır | producer'ın ölçüm zinciri tasarlandığında kayma ÖLÇÜLÜR ve M9 genişletilir VEYA genişletilmemesi gerekçelendirilir | GATE 2 SONRASI (producer tasarımı) | producer ölçüm sırası tanımlandığında | **AÇIK** — **ÖLÇÜLMEDİ (tasarıma bağlı)**; M9 bu pencereden HİÇ bahsetmiyor (sözleşme sessizliği) | kaynak okuması |
 
 ### T-11 SONDA SONUCU (scratch DB, davranış ölçümü)
 
