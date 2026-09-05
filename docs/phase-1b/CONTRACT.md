@@ -78,6 +78,70 @@ yoktu), `not_applicable` değildir (uygulanamaz olan bir şey yoktu).
 alanlarına uygulanır. Mevcut `base_sha`, `branch`, `worktree_path`
 sütunlarına UYGULANMAZ.
 
+### ENFORCEMENT BÖLÜNMESİ
+
+M4 İKİ AYRI INVARYANT içerir ve bunlar AYRI KATMANLARDA uygulanır.
+"Aynı transaction'da yazılır" ifadesi tek başına yetersizdir;
+hangi invaryantın hangi katmanda uygulandığı ADIYLA yazılır.
+
+**INVARYANT A — DURUM GEÇERLİLİĞİ (state grammar)**
+Bir satırın SON HALİNDEKİ durum/değer kombinasyonu izinli mi.
+UYGULAYAN KATMAN: sütun-düzeyi CHECK kısıtı.
+ÖLÇÜLDÜ: 23/23 vaka, iki tasarımda, 0 ifade edilemeyen vaka
+(SQLite 3.49.2 / better-sqlite3 11.10.0).
+
+**INVARYANT B — GÜNCELLEME BAĞLAŞIMI (update coupling)**
+Durum ve değer birbirinden BAĞIMSIZ değiştirilemez.
+UYGULAYAN KATMAN: BEFORE UPDATE trigger (`RAISE(ABORT)`).
+CHECK BU INVARYANTI UYGULAYAMAZ — ölçüldü: normal satır CHECK'i
+OLD değeri GÖRMEZ; geçerli bir son hale düşen değer-tek UPDATE
+geçer. Generated column da OLD'u göremez.
+(SQLite 3.49.2 / better-sqlite3 11.10.0)
+
+BU BÖLÜNME BİR TASARIM TERCİHİ DEĞİL, ÖLÇÜLEN BİR SINIRDIR.
+CHECK'in Invaryant B'yi uygulayamaması, Invaryant A'yı
+uygulayamadığı anlamına GELMEZ.
+
+### DURUM TEMSİLİ
+
+Durum tek TEXT sütununda tutulur; sebep durum string'inin içinde
+parantezle gömülüdür (örnek: `'failed(timeout)'`).
+Ayrı bir `<alan>_reason` sütunu KULLANILMAZ.
+
+**GEREKÇE (ölçüldü, SQLite 3.49.2 / better-sqlite3 11.10.0):** ayrı
+sebep sütunu tasarımının naive hali iki vakada SESSİZCE izin verdi —
+`reason IN (...)` ifadesi `reason` NULL iken NULL döner ve SQL CHECK
+yalnız FALSE'ta ihlal sayar. Bu delik bir `IS NOT NULL` guard'ı ile
+kapatılabilir, ama kapalı kalması o guard'ı hatırlamaya bağlıdır. Tek
+sütunlu temsilde delik YAPISAL OLARAK yoktur.
+
+İzinli durum alfabesi (tam liste, kapalı küme):
+
+```
+measured
+measured_detached
+never_measured
+failed(git-missing)
+failed(command-nonzero)
+failed(timeout)
+failed(not-a-repo)
+failed(unusable-output)
+not_applicable(no-isolation)
+not_applicable(bare-repo)
+not_applicable(submodule)
+```
+
+### YENİDEN SINIFLANDIRMA YASAĞI
+
+Değeri iki tarafta da NULL olan iki durum arasında geçiş
+YAPILAMAZ (örnek: `failed(timeout)` → `failed(not-a-repo)`).
+Invaryant B'yi uygulayan trigger bunu reddeder ve bu RET
+SÖZLEŞMEYE UYGUNDUR.
+
+GEREKÇE: bir başarısızlık sınıfının sonradan yeniden
+sınıflandırılması, ölçüm anı geçtikten sonra hükmü değiştirmektir.
+Yeni ölçüm YENİ RUN'dır; eski run'ın etiketini düzeltmek değildir.
+
 ---
 
 ## M5 — BAŞARISIZLIK SINIFLARI
@@ -197,6 +261,29 @@ korunduğunu KANITLAMAZ.
 güncellenip güncellenemeyeceği bu maddenin konusu DEĞİLDİR ve bugün
 ÖLÇÜLMEDİ.
 
+### GÖÇ ŞEKLİ
+
+Göç, `ALTER TABLE ADD COLUMN` ile yapılır; sütun-düzeyi CHECK bu
+ifadede birlikte tanımlanır. Tablo YENİDEN İNŞA EDİLMEZ.
+SATIRLAR YENİDEN OLUŞTURULMAZ (*migration rows are not
+reconstructed*).
+
+**ÖLÇÜLDÜ (SQLite 3.49.2 / better-sqlite3 11.10.0):** SQLite'ta
+`ALTER TABLE ... ADD CONSTRAINT` yoktur, ancak `ADD COLUMN`
+sütun-düzeyi CHECK'i kabul eder ve bu CHECK başka bir sütuna
+referans verebilir. Bu yolda satırlar hiç kopyalanmaz ve rowid'ler
+sabit kalır.
+
+**SONUÇ:** M10'un satır kümesi koruması — satır kaybı, çoğaltma,
+kimlik değişimi — artık yalnız TEST EDİLEN bir özellik değil,
+seçilen göç şeklinin YAPISAL sonucudur. Testler bunu yine de
+ölçer; ama korumanın kaynağı test değil, şemadır.
+
+**BEDEL (ölçüldü ve kabul edildi):** `SELECT * FROM runs` 20 sütundan
+31 sütuna çıkar. `ADD COLUMN` CHECK'i ADLANDIRILAMAZ, dolayısıyla
+hata mesajı tam ifadeyi basar (~371 karakter) — tablo-düzeyi
+adlandırılmış kısıtın vereceği kısa mesaj kaybedilir.
+
 ---
 
 ## M11 — FIXTURE İZOLASYON ÖN KOŞULU
@@ -263,6 +350,9 @@ için de geçerlidir.
 `measured_detached` YALNIZ `git_branch_status` için geçerlidir; diğer
 dört alanda bu durum yazılamaz.
 
+**YERLEŞİM:** 11 provenance sütunu `runs` tablosunda durur; ayrı bir
+tablo KULLANILMAZ. Gerekçe M10 GÖÇ ŞEKLİ bölümünde yazılıdır.
+
 **AÇIK BORÇ — OKUMA SEMANTİĞİ:** bir tüketicinin aynı kavram için hem
 legacy sütunu hem M13 sütununu gördüğünde hangisini hangi hükümde
 kullanacağı BU FAZIN KONUSU DEĞİLDİR. Faz 1B yalnız kaydeder,
@@ -292,3 +382,23 @@ implementation planina adiyla girer.
 ancak kendi `process.env`'ini değiştirerek etkileyebilir. Bu testleri
 sıralı çalışmaya zorlar ve ölçülen "yanlış düğme" tuzağının kendisidir.
 Bu bir ÜRETİM KODU değişikliğidir ve fixture dilimine aittir.
+
+## FAIL-CLOSED YAZMA, GÜVENİLİR VERİ DEMEK DEĞİLDİR
+
+Faz 1B sonunda DB katmanı geçersiz provenance yazılmasını
+reddedecek. Bu, YAZMA tarafının fail-closed olmasıdır.
+
+OKUMA tarafı SERBEST kalır: `provenance_complete=false` olan bir
+run'dan PROVEN hüküm kurulmasını hiçbir mekanizma engellemez.
+Yani sistem, veriyi YANLIŞ YAZMAYI imkânsız kılıp, doğru yazılmış
+veriyi YANLIŞ OKUMAYI serbest bırakır.
+
+Bu tutarsızlık değil, bilinçli faz ayrımıdır. ANCAK: enforcement
+ne kadar sağlamlaşırsa, Measurement Layer'ın yokluğu o kadar
+tehlikeli hale gelir — sağlam bir yazma kapısı "bu veri
+güvenilir" hissi yaratır ve tam olarak bu belgenin yasakladığı
+cümleyi davet eder.
+
+DB yalnızca GRAMERİ ve YAZMA BAĞLAŞIMINI garanti eder. Verinin
+bir hüküm için epistemik olarak YETERLİ olup olmadığını
+Measurement Layer belirler ve o katman HENÜZ YOKTUR.

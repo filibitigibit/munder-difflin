@@ -222,6 +222,15 @@ Türetilmiş bayrak: `provenance_complete`.
 - BEKLENEN GOZLEM: Göç çağrılmadan önce `pragma user_version` = 2; M13 sütunları `pragma table_info(runs)` çıktısında YOKTUR; ve fixture gerçekten üç ayrı profil taşır — bir satırda `worktree_path` dolu, bir satırda tüm eski provenance sütunları NULL, bir satır farklı bir `status` değerinde.
 - IZIN VERILEN HUKUM: G grubunun ek vakalarının "göç sonrası şu oldu" gözlemleri, zaten göç edilmiş ya da tek profilli bir fixture'ı ölçmüyordur.
 
+#### G-21 · göç sonrası rowid kümesi göç öncesiyle birebir aynı
+- ID: G-21
+- MADDE: M10
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Üç profilli v2 fixture'ında göç öncesi `SELECT rowid FROM runs ORDER BY rowid` toplanır; göç `ALTER TABLE ADD COLUMN` yoluyla uygulanır (M10 GÖÇ ŞEKLİ).
+- BEKLENEN GOZLEM: Göç sonrası rowid kümesi öncekiyle birebir aynıdır — hiçbir satır yeniden oluşturulmamıştır.
+- IZIN VERILEN HUKUM: Satırlar kopyalanmamıştır; M10'un satır kümesi koruması bu göç şeklinde şemanın yapısal sonucudur. **Bu vaka koruma iddiasının YERİNE GEÇMEZ:** G-14, G-15, G-16 yine de koşulur — rowid sabitliği, satır içeriğinin ve kimliğinin korunduğunu tek başına kanıtlamaz.
+
 ---
 
 # GRUP W — M4 beyaz listesi
@@ -405,6 +414,77 @@ Türetilmiş bayrak: `provenance_complete`.
 - GIRDI: `measured_detached` durumu `git_base_sha_status`, `git_toplevel_status`, `git_pty_cwd_status`, `git_worktree_path_status` alanlarına sırayla yazılır. Vaka bu dört alan üzerinde parametrelenir.
 - BEKLENEN GOZLEM: Dört parametrenin her birinde CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `measured_detached` M13 ailesinde yalnız `git_branch_status`'a özgüdür. **W-15'ten FARKLIDIR:** W-15 legacy sütun adları üzerinde aynı kısıtı test eder; bu vaka M13 alan ailesini test eder. İkisi ayrı sütun kümesidir. DB yapısal geçerliliği; üretim kanıtı değildir.
+
+## GRUP W ek bölümü 2 — enforcement bölünmesi (M4)
+
+> **KATMAN AYRIMI (W-22..W-28 için bağlayıcı):** M4'ün ENFORCEMENT BÖLÜNMESİ
+> bölümü uyarınca Invaryant A (durum geçerliliği) CHECK katmanında, Invaryant B
+> (güncelleme bağlaşımı) BEFORE UPDATE trigger katmanında uygulanır. W-22
+> CHECK katmanının SINIRINI kaydeder; W-23..W-28 trigger katmanını ölçer.
+> İki katmanın sonuçları ayrı vakalarda tutulur ve birleştirilmez.
+
+#### W-22 · SINIR: geçerli son hale düşen değer-tek UPDATE CHECK tarafından yakalanmaz
+- ID: W-22
+- MADDE: M4
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Yalnız CHECK kısıtı olan (trigger KURULMAMIŞ) bir tabloda `measured` + `'abc123'` taşıyan satır; `UPDATE ... SET git_base_sha='def456'` — durum sütununa dokunulmaz.
+- BEKLENEN GOZLEM: UPDATE GEÇER; satır `measured` + `'def456'` olur. Reddedilmesi BEKLENMEZ.
+- IZIN VERILEN HUKUM: CHECK yalnız NEW satırı görür; sonuç satırı geçerli olduğu için reddedemez. **Bu bir SINIR KAYDIDIR, CHECK'in kusuru değildir** — Invaryant B'nin CHECK kapsamı dışında olduğunun testtir. Bu vakanın geçmesi, W-24'ün trigger katmanında gerekli olduğunun gerekçesidir.
+
+#### W-23 · trigger: durumu değiştirip değeri değiştirmeyen UPDATE reddedilir
+- ID: W-23
+- MADDE: M4
+- SINIF: REDDETME
+- DILIM: DILIM 1
+- GIRDI: CHECK + BEFORE UPDATE trigger kurulu tabloda `measured` + `'abc123'` satırı; yalnız `git_base_sha_status` değiştirilir.
+- BEKLENEN GOZLEM: Yazma `RAISE(ABORT)` ile reddedilir.
+- IZIN VERILEN HUKUM: Durum tek başına güncellenemez. **Not:** bu girdide sonuç satırı Invaryant A'yı da ihlal edebilir; o durumda CHECK de reddeder. Trigger'ın kanıtı W-24'tür, çünkü orada sonuç satırı geçerli kalır.
+
+#### W-24 · trigger: değeri değiştirip durumu değiştirmeyen UPDATE reddedilir
+- ID: W-24
+- MADDE: M4
+- SINIF: REDDETME
+- DILIM: DILIM 1
+- GIRDI: CHECK + trigger kurulu tabloda `measured` + `'abc123'` satırı; yalnız `git_base_sha` değeri `'def456'` yapılır. Sonuç satırı Invaryant A'ya göre GEÇERLİDİR.
+- BEKLENEN GOZLEM: Yazma `RAISE(ABORT)` ile reddedilir.
+- IZIN VERILEN HUKUM: Değer tek başına güncellenemez. **Bu vaka trigger katmanının BELİRLEYİCİ kanıtıdır** — W-22 aynı UPDATE'in CHECK tarafından geçirildiğini gösterir, dolayısıyla buradaki ret yalnız trigger'dan gelebilir.
+
+#### W-25 · trigger: ikisini birlikte değiştiren meşru UPDATE geçer
+- ID: W-25
+- MADDE: M4
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: W-23/W-24 ile AYNI koşumda, aynı trigger'lı tabloda: `measured`/`'abc123'` → `failed(timeout)`/NULL, iki sütun tek UPDATE'te birlikte değiştirilir. Ters yön (`failed(timeout)`/NULL → `measured`/`'abc123'`) de koşulur.
+- BEKLENEN GOZLEM: İki yön de GEÇER.
+- IZIN VERILEN HUKUM: **W-23 ve W-24'ün reddetmeleri "her şeyi reddeden kapı"dan gelmiyordur.** Bu vaka aynı koşumda geçmezse W-23 ve W-24'ün sonuçları kullanılamaz.
+
+#### W-26 · trigger: ilgisiz bir sütunun güncellenmesi geçer
+- ID: W-26
+- MADDE: M4
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Trigger'lı tabloda provenance sütunlarına hiç dokunmadan `UPDATE ... SET status='paused'`.
+- BEKLENEN GOZLEM: UPDATE GEÇER.
+- IZIN VERILEN HUKUM: Bağlaşım trigger'ı provenance dışındaki satır güncellemelerini engellemez; run yaşam döngüsü (transition, pause) bozulmaz.
+
+#### W-27 · YENİDEN SINIFLANDIRMA: failed(timeout) → failed(not-a-repo) reddedilir
+- ID: W-27
+- MADDE: M4
+- SINIF: REDDETME
+- DILIM: DILIM 1
+- GIRDI: Trigger'lı tabloda `failed(timeout)` + NULL taşıyan satır; yalnız durum `failed(not-a-repo)` yapılır. Değer iki tarafta da NULL'dur.
+- BEKLENEN GOZLEM: Yazma `RAISE(ABORT)` ile reddedilir.
+- IZIN VERILEN HUKUM: M4 YENİDEN SINIFLANDIRMA YASAĞI uyarınca bu ret SÖZLEŞMEYE UYGUNDUR. Bir başarısızlık sınıfı sonradan yeniden etiketlenemez; yeni ölçüm yeni run'dır. **Bu vaka, kuralın istenmeyen bir yan etki değil, kasıtlı bir kısıt olduğunu kaydeder.**
+
+#### W-28 · POZİTİF KONTROL: trigger'sız tabloda aynı ayrık UPDATE geçer
+- ID: W-28
+- MADDE: M4
+- SINIF: POZITIF_KONTROL
+- DILIM: DILIM 1
+- GIRDI: W-24 ile aynı ayrık UPDATE, trigger'ı KURULMAMIŞ ama CHECK'i aynı olan bir tabloda çalıştırılır.
+- BEKLENEN GOZLEM: UPDATE GEÇER.
+- IZIN VERILEN HUKUM: W-23, W-24 ve W-27'deki reddin kaynağı TRIGGER'dır — CHECK'in, NOT NULL'un ya da başka bir kısıtın yan etkisi değildir.
 
 ---
 
