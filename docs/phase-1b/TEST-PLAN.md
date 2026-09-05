@@ -102,9 +102,17 @@ KARIŞTIRILMAZ. Legacy sütunların ölçüm durumu sütunu YOKTUR ve M4
 beyaz listesine TABİ DEĞİLDİR (M4 KAPSAM). **Bir vaka legacy sütunu
 kastediyorsa bunu metninde AÇIKÇA yazar.**
 
-Checkpoint alanları: `checkpoint_sha`, `checkpoint_sha_source`.
-Bunlar M4'e tabi DEĞİLDİR (M4 KAPSAM); M1'in kopyalama kuralına
-tabidirler.
+**Checkpoint alanları — ÜÇ AYRI KAVRAM, ÜÇ AYRI KURAL.** `checkpoint_`
+öneki semantik aile DEĞİLDİR (M4 KAPSAM); üçü aynı kurala sokulamaz:
+
+| alan | tabi olduğu kural |
+|---|---|
+| `checkpoint_sha` | M1'in kopyalama kuralına tabi; değeri run-start ölçümünden KOPYALANIR. **M4'e TABİ DEĞİLDİR ve kendi ölçüm durumu alanı TAŞIMAZ.** |
+| `checkpoint_sha_source` | Kopyanın KAYNAĞINI beyan eder (`'run-start-copy'` \| `'measured-at-checkpoint'`; v1'de yalnız `'run-start-copy'` üretilir). **Bir ölçüm durumu DEĞİLDİR.** |
+| `checkpoint_dirty_state` | **M4'e TABİ DEĞİLDİR.** Kopyalanıp kopyalanmayacağı ÖLÇÜLMEDİ ve karara bağlanmadı (M4 KAPSAM). |
+
+`checkpoint_event_seq` v2 şemasında vardır ama bu planın konusu değildir.
+
 Türetilmiş bayrak: `provenance_complete`.
 
 ---
@@ -896,14 +904,14 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - BEKLENEN GOZLEM: Sayaç sıfırdan büyüktür.
 - IZIN VERILEN HUKUM: C-04'ün sıfır sonucu, sayacın hiç çalışmamasından kaynaklanmıyordur.
 
-#### C-06 · run-start failed ise checkpoint da failed kopyalar
+#### C-06 · run-start failed ise checkpoint değer uydurmaz; başarısızlık run-start tarafında okunur
 - ID: C-06
 - MADDE: M1, M5
 - SINIF: KABUL
 - DILIM: DILIM 1
-- GIRDI: `git_base_sha` alanı `failed(not-a-repo)` ile kaydedilmiş bir run, sonra safe quit.
-- BEKLENEN GOZLEM: `checkpoint_sha` durumu `failed(not-a-repo)` ve değeri NULL; `checkpoint_sha_source` = `'run-start-copy'`.
-- IZIN VERILEN HUKUM: Kopya, başarısızlığı da kopyalar; checkpoint bir başarısızlığı boşluğa çevirmez.
+- GIRDI: `git_base_sha` alanı `failed(not-a-repo)` + NULL ile kaydedilmiş bir run, sonra safe quit.
+- BEKLENEN GOZLEM: `checkpoint_sha` NULL'dur (run-start değerinin kopyası) ve `checkpoint_sha_source` = `'run-start-copy'`. Aynı satırda `git_base_sha_status` hâlâ `failed(not-a-repo)` taşır. **`checkpoint_sha` için bir durum sütunu ARANMAZ — böyle bir sütun YOKTUR (M4 KAPSAM).**
+- IZIN VERILEN HUKUM: Checkpoint, başarısız bir ölçümün yerine değer uydurmaz; kopya NULL'dur ve kaynağını beyan eder. **Başarısızlığın SEBEBİ checkpoint alanından OKUNAMAZ** — `checkpoint_sha` bir ölçüm durumu taşımaz; sebep yalnız aynı satırdaki run-start durum sütunundan (`git_base_sha_status`) okunur. Bu vaka "checkpoint failed'i kopyalar" hükmünü KURMAZ; kurabileceği tek hüküm, checkpoint'in NULL'u koruduğu ve run-start tarafının sebebi hâlâ taşıdığıdır.
 
 #### C-07 · run-start not_applicable ise checkpoint aynı sınıfı kopyalar
 - ID: C-07

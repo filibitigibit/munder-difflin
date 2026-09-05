@@ -5,7 +5,7 @@
 **Dal:** `mission-control/phase-1a-run-event-store`
 
 Bu dosya sözleşme maddelerinin kanonik metnidir. Maddeler kalıcı kimlik taşır
-(M1, M2, M3, M4, M5, M6, M7, M9, M10, M11, M12, M13). Kimlikler bir kez
+(M1, M2, M3, M4, M5, M6, M7, M9, M10, M11, M12, M13, M14, M15). Kimlikler
 verildikten sonra değişmez ve yeniden kullanılmaz.
 
 **M8 numarası bu sözleşmede yoktur.** M2 ve M7 önceki sürümden korunmuştur;
@@ -451,6 +451,34 @@ legacy sütunu hem M13 sütununu gördüğünde hangisini hangi hükümde
 kullanacağı BU FAZIN KONUSU DEĞİLDİR. Faz 1B yalnız kaydeder,
 hükümleri kısıtlamaz. Okuma semantiği Measurement Layer fazına
 aittir ve borç olarak kaydedilmiştir.
+
+---
+
+## M14 — KOMŞU TARAMASI
+
+Bir kalem (madde veya vaka) düzeltildiğinde, AYNI VARSAYIMI paylaşan
+kalemler taranır. Düzeltilen kalemin komşuları, yalnız aynı adı
+taşıyanlar DEĞİL, aynı varsayıma dayananlardır.
+
+**ÖLÇÜLEN GEREKÇE:** M13 ihdas edildiğinde M3 ve M4 geride kaldı
+(birinci tekrar). C-08 düzeltildiğinde C-06 ve C-07 geride kaldı
+(ikinci tekrar). Aynı hata sınıfı iki kez, iki tur arayla.
+
+**SINIR:** ad-tabanlı tarama bu sınıfı TAM GÖREMEZ — C-07 hiçbir
+`checkpoint_` adı taşımadan çelişiyordu. Komşu taraması ANLAM
+üzerinden yapılır ve tamlık iddiası KURULAMAZ.
+
+---
+
+## M15 — SAYIM ÇAPRAZ KONTROLÜ
+
+Bu belgeye veya plana yazılan her YENİ LİSTE (alan sayımı, durum
+alfabesi, sebep listesi, sözlük), YAZILDIĞI ANDA mevcut tanımlarla
+çapraz kontrol edilir. Sonraki turda tarama ile yakalanması
+BEKLENMEZ.
+
+**ÖLÇÜLEN GEREKÇE:** bu belgeye yazılan bir sözlük, yazıldığı turda
+M4 KAPSAM ile karşılaştırılmadığı için aynı turda çelişki üretti.
 
 ---
 
