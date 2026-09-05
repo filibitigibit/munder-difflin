@@ -21,6 +21,34 @@ Her vaka kalıcı bir kimlik taşır ve **yedi zorunlu alan** hâlinde yazılır
 | `DILIM` | `DILIM 1` \| `FIXTURE DILIMI` \| `ATANAMADI` — hangi uygulama diliminde koşulur |
 | `GATE BAGIMLILIGI` | **İSTEĞE BAĞLI ALAN.** Vakanın koşulabilmesi için açılması gereken gate. **Boş ise vaka, bulunduğu dilimin gate'ine tabidir.** |
 | `BESLEYICI` | **İSTEĞE BAĞLI ALAN.** Vakanın ürettiği ölçüm bir gate'in ŞARTINI besliyorsa yazılır. Besleyici kalem o gate'e **BAĞIMLI DEĞİLDİR.** |
+| `KANIT DEGERI` | **İSTEĞE BAĞLI ALAN.** Vakanın hangi mekanizmayı AYIRT EDİCİ olarak kanıtladığı. **Çakma ile ÖLÇÜLÜR, iddia EDİLMEZ.** |
+
+## KANIT DEGERI alanının anlamı
+
+`KANIT DEGERI` **isteğe bağlı** bir alandır ve bir vakanın hangi
+mekanizmayı AYIRT EDİCİ olarak kanıtladığını yazar. **Çakma ile
+ÖLÇÜLÜR, iddia EDİLMEZ.**
+
+| değer | anlamı |
+|---|---|
+| `AYIRT EDICI: <mekanizma>` | o mekanizma kaldırıldığında vaka **DÜŞTÜ** (ölçüldü) |
+| `KANIT DEGIL: <mekanizma>` | o mekanizma kaldırıldığında vaka **DÜŞMEDİ**, VE mutasyonun vakanın iddia ettiği özelliği **FİİLEN bozduğu** gösterildi |
+| `OLCULMEDI` | çakma ile sınanmadı, VEYA çalıştırılan mutasyon vakanın iddia ettiği özelliği **bozmadı** |
+
+🔴 **Bir vakanın YEŞİL olması, adında geçen mekanizmanın çalıştığını
+KANITLAMAZ.** Kanıt yalnız çakmadan gelir.
+
+🔴 **`KANIT DEGIL` yazabilmek için İKİ ŞEY gerekir:** vaka düşmedi VE
+mutasyon o vakanın hedefini bozdu. İkincisi gösterilmezse sonuç
+**`OLCULMEDI`**'dir — **"düşmedi" tek başına "kanıt değil" ANLAMINA
+GELMEZ.**
+
+**ÖLÇÜLEN AYRIM — ARTIKLI KAPSAMA:** bir vakanın iddiası İKİ ayrı
+mekanizma tarafından birden karşılanıyorsa, tek katmanlı hiçbir
+mutasyon onu düşüremez. Bu **`KANIT DEGIL` DEĞİLDİR** — mutasyon o
+vakanın hedefini (reddin gerçekleşmesini) bozmamıştır, yalnız iki
+kaynağından birini kapatmıştır. Böyle bir vaka **ÇİFT için AYIRT
+EDİCİ**, tekil katman için **`OLCULMEDI`**'dir.
 
 ## AYIRT EDİCİ GÜÇ
 
@@ -364,6 +392,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: legacy değer koruması (MUT-A: göç `worktree_path`'i NULL'ladı → düştü)
 - GIRDI: `runs`, `events`, `kv`, `command_history` tablolarında dolu satırlar bulunan user_version 2 DB. Göçten önce her tablonun her satırının her sütunu tam olarak dökülür.
 - BEKLENEN GOZLEM: Göç sonrası aynı döküm alınır; eski sütun kümesi üzerinde iki döküm karakter karakter aynıdır. Satır sayısı karşılaştırması veya seçili alan karşılaştırması bu vakayı geçirmez.
 - IZIN VERILEN HUKUM: Göç mevcut veriyi bu tablolarda değiştirmez. Yeni sütunların eklenmesi eski veriyi bozmaz.
@@ -373,6 +402,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: Faz 1A append-only UPDATE koruması (MUT-E: `events_no_update` düşürüldü → TEK BAŞINA düştü)
 - GIRDI: Göç uygulanmış DB. `events` tablosundaki bir satıra doğrudan `UPDATE` denenir.
 - BEKLENEN GOZLEM: Yazma `RAISE(ABORT, 'events is append-only')` ile reddedilir. Trigger'ın `sqlite_master`'da var olması bu vakayı geçirmez; reddin fiilen gerçekleşmesi gerekir.
 - IZIN VERILEN HUKUM: Göç, Faz 1A'nın append-only UPDATE korumasını çalışır hâlde bırakır.
@@ -382,6 +412,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: Faz 1A append-only DELETE koruması (MUT-G: `events_no_delete` düşürüldü → TEK BAŞINA düştü)
 - GIRDI: Göç uygulanmış DB. `events` tablosundaki bir satıra doğrudan `DELETE` denenir.
 - BEKLENEN GOZLEM: Yazma `RAISE(ABORT, 'events is append-only')` ile reddedilir.
 - IZIN VERILEN HUKUM: Göç, Faz 1A'nın append-only DELETE korumasını çalışır hâlde bırakır.
@@ -391,6 +422,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: indeks koruması (MUT-F: `idx_runs_agent` düşürüldü → TEK BAŞINA düştü)
 - GIRDI: Göç uygulanmış DB. Göç öncesi indeks adları listelenir.
 - BEKLENEN GOZLEM: `idx_runs_agent`, `idx_runs_status`, `idx_runs_parent`, `idx_events_run`, `idx_events_type` göç sonrası `sqlite_master`'da mevcuttur; göç öncesi listeden eksilen indeks yoktur.
 - IZIN VERILEN HUKUM: Göç mevcut indeksleri düşürmez.
@@ -409,6 +441,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Göç uygulanmış DB. Persistence API'si atlanarak, `runs` tablosuna beyaz listede olmayan bir (durum, değer) kombinasyonu taşıyan doğrudan `INSERT` denenir.
 - BEKLENEN GOZLEM: SQLite CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Beyaz liste uygulaması API katmanında değil, DB katmanındadır; API'yi atlayan bir yazıcı da reddedilir.
@@ -445,6 +478,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: KANIT DEGIL: provenance_complete VIRTUAL (5c'de mekanizma kaldırıldı, vaka DÜŞMEDİ — düz sütunun DEFAULT 0'ı geçiriyor)
 - GIRDI: G-09'un ürettiği, git alanları hiç ölçülmemiş legacy satırlar.
 - BEKLENEN GOZLEM: Bu satırların `provenance_complete` değeri false'tur.
 - IZIN VERILEN HUKUM: Faz 1A döneminde açılmış run'lardan provenance gerektiren PROVEN hüküm kurulamaz ve bayrak bunu beyan eder.
@@ -471,6 +505,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M10, M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: KANIT DEGIL: provenance_complete VIRTUAL (5c'de mekanizma kaldırıldı, vaka DÜŞMEDİ — düz sütunun DEFAULT 0'ı geçiriyor)
 - GIRDI: G-12 ile aynı fixture, göç sonrası.
 - BEKLENEN GOZLEM: Üç satırın da `provenance_complete` değeri false.
 - IZIN VERILEN HUKUM: `never_measured` tamamlığı bozar; Faz 1A döneminde açılmış run'lardan provenance gerektiren PROVEN hüküm kurulamaz.
@@ -480,6 +515,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M10
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: legacy değer koruması (MUT-A: göç `worktree_path`'i NULL'ladı → düştü)
 - GIRDI: Göçten önce fixture'daki HER satırın HER eski sütunu tam olarak dökülür (üç satırın üçü de).
 - BEKLENEN GOZLEM: Göç sonrası aynı döküm alınır; eski sütun kümesi üzerinde iki döküm KÜMENİN TAMAMI için karakter karakter aynıdır. Tek bir satır üzerinde yapılan karşılaştırma bu vakayı GEÇİRMEZ.
 - IZIN VERILEN HUKUM: Göç hiçbir v2 satırının hiçbir eski sütun değerini değiştirmez. Hüküm kümenin tamamı için kurulur, seçilmiş bir satır için değil.
@@ -489,6 +525,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M10
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: satır sayısı koruması (MUT-B2: göç bir satır sildi, 3→2 → düştü)
 - GIRDI: Göç öncesi `runs` satır sayısı sayılır.
 - BEKLENEN GOZLEM: Göç sonrası satır sayısı aynıdır; hiçbir satır kaybolmaz, hiçbir satır çoğalmaz.
 - IZIN VERILEN HUKUM: Göç satır kümesinin kardinalitesini korur.
@@ -498,6 +535,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M10
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: satır kimliği koruması (MUT-C: yalnız `run_id` değişti; sayı ve rowid KORUNDU → TEMIZ atıf)
 - GIRDI: Göç öncesi `run_id` kümesi toplanır.
 - BEKLENEN GOZLEM: Göç sonrası `run_id` kümesi öncekiyle birebir aynıdır — eksik, fazla veya değişmiş kimlik yoktur.
 - IZIN VERILEN HUKUM: Göç satır kimliklerini korur. Sayı korunmuş olsa bile kimlik değişmişse bu vaka düşer; G-15 tek başına bunu kapsamaz.
@@ -507,6 +545,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M10
 - SINIF: POZITIF_KONTROL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: legacy değer koruması (MUT-A: göç `worktree_path`'i NULL'ladı → düştü)
 - GIRDI: Fixture'ın (a) profilli satırı — `worktree_path` dolu (ölçülmüş olgu: discovery'de `probe-iso` run'ında bu sütun `D:\mc-scratch\hive\worktrees\probe-iso` değeriyle görülmüştür).
 - BEKLENEN GOZLEM: Göç sonrası o satırın `worktree_path` değeri karakter karakter aynıdır.
 - IZIN VERILEN HUKUM: **Bu bir POZİTİF KONTROLDÜR.** Göç fixture'ında gerçekten dolu bir legacy sütun bulunduğunu ve korumanın en az bu satırda çalıştığını gösterir. **Tek başına evrensel koruma hükmünü KURMAZ** — o hüküm G-14, G-15, G-16'nın birlikte geçmesine bağlıdır.
@@ -516,6 +555,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M10, M13
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: legacy değer koruması (MUT-A: göç `worktree_path`'i NULL'ladı → düştü)
 - GIRDI: Fixture'ın (a) profilli satırı, göç sonrası.
 - BEKLENEN GOZLEM: `worktree_path` eski değerini taşır; `git_worktree_path` NULL ve `git_worktree_path_status` = `never_measured`. İki sütun ayrıdır ve legacy değer yeni sütuna KOPYALANMAMIŞTIR. Aynı denetim `base_sha`/`git_base_sha` ve `branch`/`git_branch` için de yapılır.
 - IZIN VERILEN HUKUM: Tarihsel metadata ile ölçülmüş provenance ayrı sütunlarda kalır; göç bir tarihsel değeri ölçülmüş gibi göstermez.
@@ -543,6 +583,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M10
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: rowid koruması (MUT-D: yalnız rowid kaydırıldı; sayı, kimlik ve değer KORUNDU → TEMIZ atıf)
 - GIRDI: Üç profilli v2 fixture'ında göç öncesi `SELECT rowid FROM runs ORDER BY rowid` toplanır; göç `ALTER TABLE ADD COLUMN` yoluyla uygulanır (M10 GÖÇ ŞEKLİ).
 - BEKLENEN GOZLEM: Göç sonrası rowid kümesi öncekiyle birebir aynıdır — hiçbir satır yeniden oluşturulmamıştır.
 - IZIN VERILEN HUKUM: Satırlar kopyalanmamıştır; M10'un satır kümesi koruması bu göç şeklinde şemanın yapısal sonucudur. **Bu vaka koruma iddiasının YERİNE GEÇMEZ:** G-14, G-15, G-16 yine de koşulur — rowid sabitliği, satır içeriğinin ve kimliğinin korunduğunu tek başına kanıtlamaz.
@@ -565,6 +606,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir git alanına `measured` durumu ve NULL değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: "Ölçüldü" beyanı değersiz kaydedilemez.
@@ -583,6 +625,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: `git_branch` alanına `measured_detached` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Detached durumda bir dal adı uydurulup kaydedilemez.
@@ -601,6 +644,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir git alanına `failed(timeout)` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Başarısız bir ölçüm değer taşıyamaz; yarım okunan çıktı değer olarak kaydedilemez.
@@ -619,6 +663,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: `git_worktree_path` alanına `not_applicable(no-isolation)` durumu ve boş olmayan bir yol yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: "Uygulanamaz" beyanı bir değerle birlikte kaydedilemez; izolasyonsuz bir run'a worktree yolu iliştirilemez.
@@ -628,6 +673,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 CHECK + bağlaşım trigger'ı ÇİFTİ · tekil katman için OLCULMEDI (yalnız çift mutasyonda düştü)
 - GIRDI: `measured` + dolu değer taşıyan bir satırda yalnız durum sütunu `failed(timeout)` yapılır; değer sütununa dokunulmaz.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: Durum tek başına güncellenemez; durum ve değer ayrılamaz.
@@ -637,6 +683,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 CHECK + bağlaşım trigger'ı ÇİFTİ · tekil katman için OLCULMEDI (yalnız çift mutasyonda düştü)
 - GIRDI: `failed(timeout)` + NULL taşıyan bir satırda yalnız değer sütununa bir SHA yazılır; durum sütununa dokunulmaz.
 - BEKLENEN GOZLEM: Yazma reddedilir.
 - IZIN VERILEN HUKUM: Değer tek başına güncellenemez; bir başarısızlık kaydına sonradan değer iliştirilemez.
@@ -646,6 +693,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir git alanına `unknown`, `pending`, `partial` gibi beyaz listede olmayan durum string'leri yazılır.
 - BEKLENEN GOZLEM: Her denemede CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Durum alanı kapalı bir kümedir; yeni bir durum sınıfı şema değişikliği olmadan sisteme giremez.
@@ -655,6 +703,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir git alanına `measured` durumu ve `''` (uzunluk 0 string) yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Boş string dolu değer sayılmaz. Faz 1A'da `orNull`'un `''`'i geçirmesiyle açık kalan boşluk DB katmanında kapanır.
@@ -664,6 +713,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir git alanına `failed(uydurma-sebep)` yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `<sebep>` serbest string değildir; sabit listedir ve DB bunu uygular.
@@ -673,6 +723,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir git alanına `not_applicable(uydurma-sebep)` yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `not_applicable` sebep listesi de kapalıdır; sabit liste uygulaması yalnız `failed` ailesi için değildir.
@@ -716,6 +767,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M5
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir M13 alanına `failed(unusable-output)` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: Kullanılamaz çıktıdan bir değer damıtılıp kaydedilemez. DB yapısal geçerliliği; üretim kanıtı değildir.
@@ -734,6 +786,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: Bir M13 alanına `never_measured` durumu ve boş olmayan bir değer yazılır.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: "Hiç ölçülmedi" beyanı bir değerle birlikte kaydedilemez. DB yapısal geçerliliği; üretim kanıtı değildir.
@@ -743,6 +796,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4, M13
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 yapısal CHECK (çakma 5a — 12 vakanın biri)
 - GIRDI: `measured_detached` durumu `git_base_sha_status`, `git_toplevel_status`, `git_pty_cwd_status`, `git_worktree_path_status` alanlarına sırayla yazılır. Vaka bu dört alan üzerinde parametrelenir.
 - BEKLENEN GOZLEM: Dört parametrenin her birinde CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `measured_detached` M13 ailesinde yalnız `git_branch_status`'a özgüdür. **W-15'ten FARKLIDIR:** W-15 legacy sütun adları üzerinde aynı kısıtı test eder; bu vaka M13 alan ailesini test eder. İkisi ayrı sütun kümesidir. DB yapısal geçerliliği; üretim kanıtı değildir.
@@ -769,6 +823,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: M4 CHECK + bağlaşım trigger'ı ÇİFTİ · tekil katman için OLCULMEDI (yalnız çift mutasyonda düştü)
 - GIRDI: CHECK + BEFORE UPDATE trigger kurulu tabloda `measured` + `'abc123'` satırı; yalnız `git_base_sha_status` değiştirilir.
 - BEKLENEN GOZLEM: Yazma `RAISE(ABORT)` ile reddedilir.
 - IZIN VERILEN HUKUM: Durum tek başına güncellenemez. **Not:** bu girdide sonuç satırı Invaryant A'yı da ihlal edebilir; o durumda CHECK de reddeder. Trigger'ın kanıtı W-24'tür, çünkü orada sonuç satırı geçerli kalır.
@@ -778,6 +833,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: bağlaşım trigger'ı (çakma 5b — yalnız iki vakadan biri)
 - GIRDI: CHECK + trigger kurulu tabloda `measured` + `'abc123'` satırı; yalnız `git_base_sha` değeri `'def456'` yapılır. Sonuç satırı Invaryant A'ya göre GEÇERLİDİR.
 - BEKLENEN GOZLEM: Yazma `RAISE(ABORT)` ile reddedilir.
 - IZIN VERILEN HUKUM: Değer tek başına güncellenemez. **Bu vaka trigger katmanının BELİRLEYİCİ kanıtıdır** — W-22 aynı UPDATE'in CHECK tarafından geçirildiğini gösterir, dolayısıyla buradaki ret yalnız trigger'dan gelebilir.
@@ -805,6 +861,7 @@ Türetilmiş bayrak: `provenance_complete`.
 - MADDE: M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: bağlaşım trigger'ı (çakma 5b — yalnız iki vakadan biri)
 - GIRDI: Trigger'lı tabloda `failed(timeout)` + NULL taşıyan satır; yalnız durum `failed(not-a-repo)` yapılır. Değer iki tarafta da NULL'dur.
 - BEKLENEN GOZLEM: Yazma `RAISE(ABORT)` ile reddedilir.
 - IZIN VERILEN HUKUM: M4 YENİDEN SINIFLANDIRMA YASAĞI uyarınca bu ret SÖZLEŞMEYE UYGUNDUR. Bir başarısızlık sınıfı sonradan yeniden etiketlenemez; yeni ölçüm yeni run'dır. **Bu vaka, kuralın istenmeyen bir yan etki değil, kasıtlı bir kısıt olduğunu kaydeder.**
@@ -1186,6 +1243,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Yalnız `git_base_sha` alanı `failed(command-nonzero)`, diğer tüm git alanları `measured` olan bir run.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Tek bir alanın başarısızlığı tamamlığı bozar.
@@ -1195,6 +1253,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Yalnız `git_branch` alanı `failed(command-nonzero)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Kural alan bağımsızdır; `git_branch` de tamamlığa dahildir.
@@ -1204,6 +1263,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Yalnız `pty_cwd` alanı `failed(not-a-repo)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: `pty_cwd` de tamamlığa dahildir.
@@ -1213,6 +1273,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Yalnız `git_toplevel` alanı `failed(timeout)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: `git_toplevel` de tamamlığa dahildir.
@@ -1222,6 +1283,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Yalnız `git_worktree_path` alanı `failed(git-missing)`, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: `git_worktree_path` de tamamlığa dahildir; `not_applicable(no-isolation)` ile `failed` aynı sonucu vermez.
@@ -1231,6 +1293,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Beş git alanının hepsi `measured` ve dolu olan bir run.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: Tam ölçülmüş bir run provenance gerektiren hüküm için kullanılabilir.
@@ -1240,6 +1303,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: `git_branch` alanı `measured_detached` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: Detached HEAD tam ölçülmüş bir haldir; dal yokluğu ölçüm eksikliği değildir.
@@ -1249,6 +1313,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: `git_worktree_path` alanı `not_applicable(no-isolation)` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = true.
 - IZIN VERILEN HUKUM: İzolasyonsuz run beklenen bir haldir ve tam sayılır.
@@ -1258,6 +1323,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Bir alan `not_applicable(bare-repo)` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Bare repo "ölçülemedi" halidir; aynı `not_applicable` ailesinde olması onu `no-isolation` ile aynı sonuca götürmez.
@@ -1267,6 +1333,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: KABUL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Bir alan `not_applicable(submodule)` + NULL, diğerleri `measured`.
 - BEKLENEN GOZLEM: `provenance_complete` = false.
 - IZIN VERILEN HUKUM: Submodule "ölçülemedi" halidir.
@@ -1285,6 +1352,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6, M13
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Alan durumları false gerektirirken `provenance_complete` alanına doğrudan true yazılmaya çalışılır. Üç yazma biçimi de denenir: `INSERT`, `UPDATE`, `INSERT OR REPLACE`.
 - BEKLENEN GOZLEM: Üç denemenin her biri de SQLite tarafından REDDEDİLİR. `INSERT` ve `INSERT OR REPLACE` `cannot INSERT into generated column "provenance_complete"`, `UPDATE` ise `cannot UPDATE generated column "provenance_complete"` verir. Yazma sonrası geri okunan değer, beş durum sütunundan türetilen değerdir (bu girdide false).
 - IZIN VERILEN HUKUM: Bayrak M13 PROVENANCE_COMPLETE MEKANİZMASI uyarınca VIRTUAL GENERATED COLUMN'dur; bir yazıcı onu alan durumlarından bağımsız olarak beyazlatamaz çünkü **yazma yüzeyi ŞEMA DÜZEYİNDE YOKTUR**. Ret bir CHECK'ten veya trigger'dan GELMEZ — sütunun generated olmasından gelir. **Bu vaka "bayrak her zaman doğrudur" hükmünü KURMAZ**; yalnız ELLE BEYAZLATILAMADIĞINI kurar. Türetme kuralının kendisi F-01..F-10 tarafından ölçülür.
@@ -1303,6 +1371,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6, M13
 - SINIF: POZITIF_KONTROL
 - DILIM: DILIM 1
+- KANIT DEGERI: AYIRT EDICI: provenance_complete VIRTUAL (çakma 5c)
 - GIRDI: Üç adım. (1) Şema, `provenance_complete` VIRTUAL generated sütunu YERİNE aynı adlı DÜZ bir sütunla kurulur (mekanizma kaldırılmıştır). (2) F-12 bu şema üzerinde koşulur. (3) Mekanizma BİREBİR geri yüklenir ve şema metninin `sha256`'sı, kaldırma öncesi alınan `sha256` ile karşılaştırılır; sonra F-12 tekrar koşulur.
 - BEKLENEN GOZLEM: Adım (2)'de **F-12 DÜŞER** — düz sütuna yazma kabul edilir, ret gelmez. Adım (3)'te `sha256` değerleri BİREBİR eşittir ve F-12 tekrar GEÇER.
 - IZIN VERILEN HUKUM: F-12'nin geçmesi, `provenance_complete` mekanizmasının VARLIĞINA bağlıdır — mekanizma yokken de geçen bir vaka o mekanizmanın kanıtı olmazdı. **Bu vaka F-12'nin AYIRT EDİCİ olduğunu kurar, mekanizmanın DOĞRU olduğunu değil** (doğruluk F-01..F-10'un işidir). **`sha256` eşitliği yalnız şema metninin geri geldiğini kanıtlar**, kaldırma sırasında başka bir yan etki oluşmadığını KANITLAMAZ. **Bu vaka bugün KOŞULMAMIŞTIR;** ayırt ediciliği ÖLÇÜLMEDİ, sonda turunun 52-vektör ölçümünden ÇIKARSANMIŞTIR.

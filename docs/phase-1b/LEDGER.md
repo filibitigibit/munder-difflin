@@ -41,6 +41,28 @@ Kaynak etiketleri:
 | borca alınan SARI | **ÖLÇÜLEMEDİ** | — |
 | rol-yetki ihlali *(ayrı kova)* | **≥ 1** (canlı hive yazımı) | git + reconstruction |
 | implementer'ın kendi kusurunu bildirdiği olay *(ayrı kova)* | v3.9 turunda **6**; turlar arası toplam **ÖLÇÜLEMEDİ** | reconstruction |
+| implementer'ın bildirdiği GEÇERSİZ ÇAKMA denemesi *(ayrı kova)* | **2** (dilim 1 turu: dosyaya yazılmayan mutasyon · syntax error üreten mutasyon) | bu turda üretildi |
+
+**GENİŞ SUİT SAYIM FARKI — GÖZLEM, SEBEP DEĞİL.** Kapanış kaydının
+**745**'i ile bu turun yöntemiyle ölçülen **743**'ü (730 ✔ + 13 tekil ✖)
+arasında bir fark **GÖZLENDİ**. **Kaynağı ÖLÇÜLMEDİ** ve bu satır ona
+hiçbir sebep ATAMAZ; ileride kaynağı ölçülürse ilgili kovaya o zaman
+yazılır. Karşılaştırmanın kendisi GEÇERLİDİR: taban ve sonrası **aynı
+yöntemle** sayıldı ve SET karşılaştırması iki yönlü yapıldı.
+
+## 🔴 DENETÇİ KÖRLÜĞÜ
+
+**Denetçinin daha az KIRMIZI bulması TEK BAŞINA iyileşme DEĞİLDİR.**
+Körleşme de aynı sayıyı üretir. İkisini ayırmak için denetçinin hâlâ
+görebildiğini gösteren **KONTROLLÜ BİR KUSUR** gerekir.
+
+Bu, testler için geçerli olan kuralın denetim tarafındaki karşılığıdır:
+**mekanizma kaldırıldığında düşmeyen test kanıt değildir; kusur enjekte
+edildiğinde yakalamayan denetçi de kanıt değildir.**
+
+🔴 **BUGÜNKÜ DURUM: denetçiye enjekte edilmiş KONTROLLÜ TEK BİR KUSUR
+YOKTUR.** Denetimin körlüğü hakkında hiçbir şey **BİLİNMİYOR**. Bu bir
+**ÖLÇÜLMEDİ** kalemidir.
 
 **Hiçbir toplam git'ten doğrulanamadı.** Denetim olayları yirmi tur
 boyunca yalnız sohbette yaşadı; depoda iz bırakmadılar. Bu defterin
@@ -136,6 +158,10 @@ Değerler: `AÇIK` · `KAPALI` · `ÖLÇÜLEMEDİ-RECONSTRUCTION`.
 | T-10 | C-03 enforcement katmanı — `checkpoint_sha_source` reddi | reddi uygulayacak yüzeyin adıyla belirlenmesi | **GATE 3** | C-03 koşulmadan önce | **AÇIK** — tetikleyici bu turda vakaya YAZILDI | repo |
 | T-11 | `provenance_complete` sürdürme mekanizması — aday seçimi | mekanizmanın ADIYLA seçilmesi | GATE 1 | DİLİM 1 göçü yazılmadan ÖNCE | 🟢 **KAPALI** — CTO A-VIRTUAL'ı seçti; M13 PROVENANCE_COMPLETE MEKANİZMASI'nda kilitlendi | repo + ölçüm |
 | T-12 | A-VIRTUAL performansı | üretim boyutlu tabloda okuma süresinin ölçülmesi | hiçbiri (borç) | performans şüphesi doğduğunda | **AÇIK** — VIRTUAL her okumada hesaplanır; **ÖLÇÜLMEDİ** | ölçüm sınırı |
+| T-13 | ÜRETİCİ YOK — şema M13 sütunlarını taşıyor ama hiçbir yazma yolu doldurmuyor (`createRun` 20 sütun yazıyor) | fixture/producer diliminin yazılması | **GATE 2** | fixture dilimi açıldığında | **AÇIK** — bu turda ölçüldü | repo + ölçüm |
+| T-14 | GENİŞ SUİT SAYIM FARKI — 745 (kapanış kaydı) vs 743 (bu turun yöntemi) | farkın KAYNAĞININ ölçülmesi | hiçbiri | sayım yöntemi tartışıldığında | **AÇIK** — fark GÖZLENDİ, kaynağı **ÖLÇÜLMEDİ**, sebep ATANMADI | gözlem |
+| T-15 | KORUMA VAKALARININ AYIRT EDİCİLİĞİ | hedefli çakma ile ölçülmesi | hiçbiri | — | 🟢 **KAPALI** — dokuz vakanın dokuzu da kendi hedefli mutasyonunda DÜŞTÜ (MUT-A/B2/C/D/E/F/G); hiçbiri KANIT DEĞİL çıkmadı | ölçüm |
+| T-16 | DENETÇİ KÖRLÜĞÜ — denetime enjekte edilmiş kontrollü kusur YOK | denetçiye kontrollü bir kusur enjekte edilmesi | hiçbiri | denetim kalitesi hakkında hüküm kurulmadan ÖNCE | **AÇIK** — hiç ölçülmedi | ÖLÇÜLMEDİ |
 
 ### T-11 SONDA SONUCU (scratch DB, davranış ölçümü)
 
@@ -171,7 +197,7 @@ tanım gereği geçemez — bu bir BELGE ÇIKARIMIDIR, davranış ölçümü de�
 **T-8 İKİYE AYRILIR:** bağ borcunun kendisi **AÇIK** (80/91); bu borcu
 YANLIŞ ÖLÇEN aracın kusuru **KAPALI** (bkz. BÖLÜM 4, A-1).
 
-**İLK KAPANAN KALEM: T-11.** ON İKİ kalemin **biri KAPALI**, on biri
+**KAPANAN KALEMLER: T-11, T-15.** ON ALTI kalemin **ikisi KAPALI**, on dördü
 AÇIK — her biri repo kanıtından doğrulandı, hiçbiri "otomatik açık"
 sayılmadı.
 
