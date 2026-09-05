@@ -55,11 +55,24 @@ değilse kullanıcının cwd'si. İkisi farklı evrendir; hüküm hangisinde
 
 ## M3 — ÜÇ AYRI YOL DEĞERİ, ÜÇ AYRI SÜTUN
 
-`pty_cwd` = PTY'ye fiilen verilen dizin.
+`git_pty_cwd` = PTY'ye fiilen verilen dizin.
 `git_toplevel` = o cwd'de git ile ÖLÇÜLEN repo kökü.
-`worktree_path` = yalnız izolasyon yöneticisi worktree oluşturduysa
-onun ürettiği yol; aksi halde `not_applicable`.
+`git_worktree_path` = yalnız izolasyon yöneticisi worktree oluşturduysa
+onun ürettiği yol; aksi halde `not_applicable` — izolasyon yoksa
+`git_worktree_path_status` alanı `not_applicable(no-isolation)` alır.
 Üçü eşit olduğunda bile ayrı yazılır.
+
+**KAPSAM SINIRI:** yukarıdaki cümleden "`git_worktree_path` için tek
+mümkün `not_applicable` sebebi `no-isolation`'dır" sonucu ÇIKMAZ.
+M5'te tanımlı diğer `not_applicable` sebepleri (`bare-repo`,
+`submodule`) bu alan için de geçerli olabilir. **ÖLÇÜLDÜ (bu belgenin
+metni üzerinde):** M5 ve M6, `not_applicable` sebeplerini alan bazında
+KISITLAMIYOR — hangi sebebin hangi alana yazılabileceğine dair bir
+kural bu belgede YOKTUR ve o eşleme ÖLÇÜLMEDİ.
+
+Bu adlar M13 alan ailesine aittir. Aynı kavramın legacy karşılıkları
+(`base_sha`, `branch`, `worktree_path`) M13 LEGACY AYRIMI bölümünde
+tanımlıdır ve M3'ün konusu DEĞİLDİR.
 
 ---
 
@@ -72,7 +85,7 @@ olmayan her kombinasyon YAZMA ANINDA DB CHECK ile reddedilir:
 | durum | değer kısıtı |
 |---|---|
 | `measured` | değer DOLU olmak ZORUNDA |
-| `measured_detached` | yalnız `branch` için; değer NULL ZORUNDA |
+| `measured_detached` | yalnız `git_branch_status` için; değer NULL ZORUNDA |
 | `failed(<sebep>)` | değer NULL ZORUNDA |
 | `not_applicable(<sebep>)` | değer NULL ZORUNDA |
 | `never_measured` | değer NULL ZORUNLU |

@@ -41,16 +41,30 @@ KALEMİ olarak görünür — **"gate'i etkilemiyor" ifadesi zamanla
 
 ### GATE ÖLÇÜTÜ
 
-Implementation kapısı ATANAMADI SAYISINA değil, atanamayan kalemin
-SINIFINA bağlıdır.
+Implementation kapısı **İKİ ŞARTA** bağlıdır:
 
-| durum | kapı |
+| şart | ölçüm |
 |---|---|
-| `ATANAMADI` (sınıflandırılamadı) > 0 | **KAPALI** |
-| `DILIM: YOK` (bilinerek koşulmayan yükümlülük) | **ETKİLENMEZ** |
+| `ATANAMADI` (sınıflandırılamadı vaka) | **= 0** olmalı |
+| `AÇIK ÇELİŞKİ` (ölçülmüş ve çözülmemiş) | **= 0** olmalı |
 
+**Kapı AÇIK ancak ve ancak İKİSİ DE sıfırsa.**
+
+`DILIM: YOK` (bilinerek koşulmayan yükümlülük) kapıyı ETKİLEMEZ.
 Bir kalemi `YOK` yapmak, sınıflandıramamanın örtüsü olarak
 KULLANILAMAZ; gerekçesi vakanın metninde yazılır.
+
+Bunların yanında **BİR GÖRÜNÜRLÜK METRİĞİ** raporlanır:
+
+> **DENETLENMEMİŞ BAĞ sayısı** (denetlenen / 66)
+
+Bu metrik **GATE ŞARTI DEĞİLDİR** ve kapıyı TEK BAŞINA KAPATMAZ.
+Sıfıra inmesi BEKLENMEZ. Ama her turda YAZILIR; görünmez kalması
+YASAKTIR.
+
+**"Kapı açık" ifadesi "sözleşme hazır" ANLAMINA GELMEZ.** Gate
+planlanabilirliği ve BİLİNEN çelişkilerin yokluğunu ölçer;
+denetlenmemiş bağın içinde ne olduğunu ÖLÇMEZ.
 
 **DILIM ETİKETİNİN ANLAMI — YÜRÜTME BİLGİSİDİR, EVREN DEĞİLDİR.**
 Dilim ataması vakanın NEREDE koşacağını söyler. Vakanın kanıtladığı
@@ -411,14 +425,14 @@ Türetilmiş bayrak: `provenance_complete`.
 - BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
 - IZIN VERILEN HUKUM: `not_applicable` sebep listesi de kapalıdır; sabit liste uygulaması yalnız `failed` ailesi için değildir.
 
-#### W-15 · measured_detached branch dışındaki alanlara yazılamaz
+#### W-15 · legacy sütunlar M4 beyaz listesinin dışındadır — durum sütunları yoktur
 - ID: W-15
-- MADDE: M4, M5
+- MADDE: M4, M13
 - SINIF: REDDETME
 - DILIM: DILIM 1
-- GIRDI: `measured_detached` durumu `base_sha`, `pty_cwd`, `git_toplevel`, `worktree_path` alanlarına sırayla yazılır. Vaka bu dört alan üzerinde parametrelenir.
-- BEKLENEN GOZLEM: Dört parametrenin her birinde CHECK kısıtı yazmayı reddeder.
-- IZIN VERILEN HUKUM: `measured_detached` yalnız `branch` alanına özgüdür ve bu kısıtlama DB katmanında uygulanır.
+- GIRDI: Göç uygulanmış DB'de legacy sütunlara bir M4 durum değeri yazılmaya çalışılır: `base_sha_status`, `branch_status`, `worktree_path_status` sütunlarına sırayla `measured_detached` yazılır. Vaka bu üç sütun adı üzerinde parametrelenir. Ayrıca `pragma table_info(runs)` ile bu üç sütunun VAR OLMADIĞI doğrulanır.
+- BEKLENEN GOZLEM: Üç denemenin her birinde yazma reddedilir ve `pragma table_info(runs)` çıktısında `base_sha_status`, `branch_status`, `worktree_path_status` sütunları BULUNMAZ.
+- IZIN VERILEN HUKUM: M4 beyaz listesi YALNIZ M13 alan ailesine uygulanır; legacy `base_sha`, `branch`, `worktree_path` sütunlarının bir ölçüm durumu sütunu YOKTUR ve bunlara M4 durum değeri yazılamaz. **ENFORCEMENT SINIRI: bu ret bir CHECK kısıtından GELMEZ** — legacy sütunlarda CHECK yoktur (M4 KAPSAM); ret, hedef sütunun şemada var olmamasından gelir (SQLite `no such column`). **"DB'nin CHECK'i bu yazıyı reddetti" hükmü KURULAMAZ.** **W-21'den FARKLIDIR:** W-21 M13 ailesinde `measured_detached`'ın yalnız `git_branch_status`'a özgü olduğunu CHECK ile test eder; bu vaka legacy tarafın beyaz listenin DIŞINDA olduğunu şema ile test eder.
 
 #### W-16 · POZİTİF KONTROL: W grubunun yazma yolu gerçekten satır yazabiliyor
 - ID: W-16
