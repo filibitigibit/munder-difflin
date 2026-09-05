@@ -230,12 +230,32 @@ KANITLAMAZ — yalnız BİLİNEN bir engelin kalmadığını gösterir.
 Bekleyen vakalar: C-07, D-06, D-07 ve aynı bağımlılıktaki diğer
 vakalar.
 
-**DURUM: KAPALI.**
+**DURUM: KAPALI.** (sebep-alan eşlemesi turu ölçümü)
+
+| ölçüm | değer |
+|---|---|
+| KARARA BAĞLANDI | **35** / 40 |
+| **ÖLÇÜLEMEDİ** | **5** / 40 |
+
+**KAPATAN BEŞ HÜCRE (ADIYLA):** `git_worktree_path` × `git-missing` ·
+`command-nonzero` · `timeout` · `not-a-repo` · `unusable-output`.
+Beşi de **ÖLÇÜLEMEDİ** — alan üretimi hiç ölçülmedi. **Bu bir GEÇERSİZ
+hükmü DEĞİLDİR.**
+
+**BESLEYİCİSİ: LEDGER T-18** (izolasyon yöneticisi failed-sınıfı
+ölçümü). Ölçüm ekseni beş `failed` sınıfıdır ve kapattığı beş hücreyle
+**BİREBİR eşleşir (5/5)** — repo bağlamı eksen DEĞİLDİR. T-18 **GATE
+2'ye BAĞIMLI DEĞİLDİR**; ondan ÖNCE, yalnız ölçüm amaçlı koşar
+(bootstrap kilidi).
 
 **KAPSAM NOTU:** bu şart bugün 40 hücrenin TAMAMINI istiyor. İleride
 producer davranışı ölçüldüğünde yalnızca producer'ın ÜRETEBİLDİĞİ
 hücrelerle daraltılabilir — ama bu bir ÖLÇÜM gerektirir; bugün
 daraltmak VARSAYIM olurdu.
+
+🔴 **T-17 (sebep ayırt edilemezliği) GATE 2'nin AÇILMA ŞARTI DEĞİLDİR**
+— o bir GATE 2 SONRASI implementation kalemidir. Gate 2 o borç açıkken
+de açılabilir.
 
 #### GATE 3 — FAZ 1B FINAL  (SEMANTİK TAMLIK GATE'İ)
 
@@ -243,7 +263,7 @@ daraltmak VARSAYIM olurdu.
 
 **DURUM: KAPALI.**
 
-**37 tanımsız hücre çözülmeden "Faz 1B tamamlandı" DENMEZ.**
+**Kalan tanımsız hücre çözülmeden "Faz 1B tamamlandı" DENMEZ.** (Sebep-alan eşlemesi turunda 32 hücre karara bağlandı; **5 hücre ÖLÇÜLEMEDİ** olarak duruyor — `git_worktree_path` × beş `failed` sebebi. **Sayı yazılmaz:** donmuş bir sayı, hücreler karara bağlandıkça maddeyi kendi ölçümüyle çelişir hâle getirir.)
 
 #### KAPSAYICI ŞART VE SAYILABİLİRLİK
 
@@ -323,7 +343,7 @@ görünmez kalmaları YASAKTIR.
 
 **BELİRSİZLİK ÇELİŞKİDEN FARKLI BİR SINIFTIR VE HİÇBİR GATE ONU
 ÖLÇMEZ.** Belirsiz kalan kalemler her turda gate sonucundan AYRI
-raporlanır; 37 tanımsız hücre bu listededir.
+raporlanır; kalan tanımsız hücreler bu listededir (bugün 5).
 
 **DILIM ETİKETİNİN ANLAMI — YÜRÜTME BİLGİSİDİR, EVREN DEĞİLDİR.**
 Dilim ataması vakanın NEREDE koşacağını söyler. Vakanın kanıtladığı

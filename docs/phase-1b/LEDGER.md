@@ -146,7 +146,7 @@ Değerler: `AÇIK` · `KAPALI` · `ÖLÇÜLEMEDİ-RECONSTRUCTION`.
 
 | # | kalem | kapatma şartı | gate | vadesi geldiği olay | BUGÜNKÜ DURUM | KAYNAK |
 |---|---|---|---|---|---|---|
-| T-1 | 37 hücre sebep-alan eşlemesi | 55 hücrenin tanımlanması | GATE 2 | fixture/producer dilimine geçiş | **AÇIK** (`TANIMSIZ — 37 hücre`; 12 + 25) | repo |
+| T-1 | sebep-alan eşlemesi | 55 hücrenin tanımlanması | GATE 2 | fixture/producer dilimine geçiş | **AÇIK — 32 hücre KARARA BAĞLANDI, 5 kaldı** (`git_worktree_path` × 5 `failed`); kalan beşi T-18 besler | repo |
 | T-2 | Measurement Layer enforcement | okuma tarafının mekanik kısıtlanması | Faz sonrası | Measurement Layer fazının ilk promptu | **AÇIK** ("HENÜZ YOKTUR" ×3) | repo |
 | T-3 | okuma semantiği (legacy vs M13) | tüketicinin hangi sütunu hangi hükümde kullanacağı | Faz sonrası | Measurement Layer | **AÇIK** (`AÇIK BORÇ — OKUMA SEMANTİĞİ`) | repo |
 | T-4 | `checkpoint_dirty_state` kopyalaması | kopyalanıp kopyalanmayacağının kararı | GATE 3 | checkpoint yazma yolu kodlanırken | **AÇIK** (`KARARA BAĞLANMAMIŞ`) | repo |
@@ -162,6 +162,8 @@ Değerler: `AÇIK` · `KAPALI` · `ÖLÇÜLEMEDİ-RECONSTRUCTION`.
 | T-14 | GENİŞ SUİT SAYIM FARKI — 745 (kapanış kaydı) vs 743 (bu turun yöntemi) | farkın KAYNAĞININ ölçülmesi | hiçbiri | sayım yöntemi tartışıldığında | **AÇIK** — fark GÖZLENDİ, kaynağı **ÖLÇÜLMEDİ**, sebep ATANMADI | gözlem |
 | T-15 | KORUMA VAKALARININ AYIRT EDİCİLİĞİ | hedefli çakma ile ölçülmesi | hiçbiri | — | 🟢 **KAPALI** — dokuz vakanın dokuzu da kendi hedefli mutasyonunda DÜŞTÜ (MUT-A/B2/C/D/E/F/G); hiçbiri KANIT DEĞİL çıkmadı | ölçüm |
 | T-16 | DENETÇİ KÖRLÜĞÜ — denetime enjekte edilmiş kontrollü kusur YOK | denetçiye kontrollü bir kusur enjekte edilmesi | hiçbiri | denetim kalitesi hakkında hüküm kurulmadan ÖNCE | **AÇIK** — hiç ölçülmedi | ÖLÇÜLMEDİ |
+| T-17 | SEBEP AYIRT EDİLEMEZLİĞİ — farklı sebepler aynı gözlemi üretiyor (`git-missing` ≡ var-olmayan cwd; `timeout` ≡ `command-nonzero`) | üreticinin beş sebebi birbirinden ayırabilecek bir ölçüm yolu tanımlaması | **GATE 2 SONRASI implementation kalemi — Gate 2'nin AÇILMA şartı DEĞİL** | üretici yazılırken | **AÇIK** | ölçüm (PROBE-RESULTS BLOK 4) |
+| T-18 | İZOLASYON YÖNETİCİSİ FAILED-SINIFI ÖLÇÜMÜ | `git_worktree_path` ÜRETİM OPERASYONUNUN beş `failed` sınıfı açısından ölçülmesi | **BESLEYİCİ (GATE 2) — Gate 2'ye BAĞIMLI DEĞİL** | GATE 2'den ÖNCE, yalnız ölçüm amaçlı ayrı tur | **AÇIK** | — |
 
 ### T-11 SONDA SONUCU (scratch DB, davranış ölçümü)
 
@@ -197,8 +199,33 @@ tanım gereği geçemez — bu bir BELGE ÇIKARIMIDIR, davranış ölçümü de�
 **T-8 İKİYE AYRILIR:** bağ borcunun kendisi **AÇIK** (80/91); bu borcu
 YANLIŞ ÖLÇEN aracın kusuru **KAPALI** (bkz. BÖLÜM 4, A-1).
 
-**KAPANAN KALEMLER: T-11, T-15.** ON ALTI kalemin **ikisi KAPALI**, on dördü
-AÇIK — her biri repo kanıtından doğrulandı, hiçbiri "otomatik açık"
+**KAPANAN KALEMLER: T-11, T-15.** ON SEKİZ kalemin **ikisi KAPALI**, on altısı
+AÇIK
+
+### T-18 — ÖLÇÜM EKSENİ (kapattığı hücrelerle BİREBİR)
+
+🔴 **ÖLÇÜM EKSENİ: BEŞ `failed` SINIFI — repo bağlamı DEĞİL.**
+`git_worktree_path`'in **GERÇEK ÜRETİM YÜZEYİNDE** her sebep için sorulan:
+bu kusur sınıfı üretilebiliyor mu. Çıktı: **ÜRETİLDİ** + ham çıktı, veya
+**BU TURDA ÜRETİLEMEDİ** + neden.
+
+| sebep | kapattığı hücre |
+|---|---|
+| `git-missing` | `git_worktree_path` × `git-missing` |
+| `command-nonzero` | `git_worktree_path` × `command-nonzero` |
+| `timeout` | `git_worktree_path` × `timeout` |
+| `not-a-repo` | `git_worktree_path` × `not-a-repo` |
+| `unusable-output` | `git_worktree_path` × `unusable-output` |
+
+**EKSEN EŞLEŞMESİ: 5/5 BİREBİR.**
+
+🔴 **bare / submodule / normal repo bağlamları ÖLÇÜM EKSENİ DEĞİLDİR.**
+Bunlar yalnızca belirli bir failure senaryosunu kurmak için gerekiyorsa
+**YARDIMCI FIXTURE BAĞLAMIDIR**. Başka bir ekseni ölçen bir tur bu
+hücreleri **KAPATMAZ**.
+
+🔴 **T-18 FIXTURE/PRODUCER IMPLEMENTATION DEĞİLDİR.** Producer ve fixture
+kodu ancak Gate 2 açıldıktan SONRA yazılır. — her biri repo kanıtından doğrulandı, hiçbiri "otomatik açık"
 sayılmadı.
 
 🔴 **T-11 KAPANDI AMA BORÇ TAM ERİMEDİ:** yerine T-12 (performans)

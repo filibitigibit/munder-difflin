@@ -328,6 +328,111 @@ onu çağıran ölçüm yolu), DB DEĞİLDİR. DB CHECK bu sebebi beyaz listede
 tutar; bu sınıfın ÜRETİLDİĞİNİ kanıtlamaz. Bu ayrım her raporda
 korunur.
 
+### SEBEP-ALAN EŞLEMESİ
+
+**KARARIN KAYNAĞI:** her hücre için karar **OLGUDAN DEĞİL, KAVRAMDAN**
+çıkar. *"`git rev-parse HEAD` bare repoda çalıştı"* bir **olgudur**;
+*"`git_base_sha` bare repoda `not_applicable` DEĞİLDİR"* bir **hükümdür**.
+Besleyici olgular `PROBE-RESULTS.md`'dedir ve **karar değildir**.
+
+#### `not_applicable` AİLESİ (15 hücre)
+
+**ANLAMI:** "bu kavram bu bağlamda **UYGULANMAZ**". Teknik olarak
+ölçülebilir olması, kavramın uygulanabilir olduğu anlamına **GELMEZ**;
+tersi de geçerlidir.
+
+| sebep | alan | karar | gerekçe |
+|---|---|---|---|
+| `no-isolation` | `git_base_sha` | **GEÇERSİZ** | izolasyon yokluğu HEAD kavramını uygulanamaz kılmaz |
+| `no-isolation` | `git_branch` | **GEÇERSİZ** | aynı gerekçe |
+| `no-isolation` | `git_toplevel` | **GEÇERSİZ** | önceden karar verildi (P-03) |
+| `no-isolation` | `git_pty_cwd` | **GEÇERSİZ** | önceden karar verildi (P-03) |
+| `no-isolation` | `git_worktree_path` | **GEÇERLİ** | önceden karar verildi (M3); izolasyon yoksa worktree kavramının kendisi uygulanmaz |
+| `bare-repo` | `git_base_sha` | **GEÇERSİZ** | bare reponun HEAD'i vardır ve kavram uygulanır |
+| `bare-repo` | `git_branch` | **GEÇERSİZ** | aynı gerekçe |
+| `bare-repo` | `git_toplevel` | **GEÇERLİ** | bare reponun **ÇALIŞMA AĞACI YOKTUR**; top-level kavramı uygulanamaz |
+| `bare-repo` | `git_pty_cwd` | **GEÇERSİZ** | cwd bir dizin olarak vardır ve kavram uygulanır; bare olması dizini yok etmez |
+| `bare-repo` | `git_worktree_path` | **GEÇERSİZ** | bare repo olması worktree_path kavramını TANIM GEREĞİ uygulanamaz KILMAZ; izolasyon mevcutsa kavram uygulanabilir kabul edilir |
+| `submodule` | `git_base_sha` | **GEÇERSİZ** | submodule'ün kendi HEAD'i vardır |
+| `submodule` | `git_branch` | **GEÇERSİZ** | aynı gerekçe |
+| `submodule` | `git_toplevel` | **GEÇERSİZ** | submodule'ün çalışma ağacı **VARDIR** |
+| `submodule` | `git_pty_cwd` | **GEÇERSİZ** | dizin vardır |
+| `submodule` | `git_worktree_path` | **GEÇERSİZ** | kavram uygulanır |
+
+**`bare-repo` × `git_toplevel` — KARAR KAVRAMDAN ÇIKAR:** çalışma ağacı
+olmayan bir repoda çalışma ağacı kökü **SORULAMAZ**. Ölçülen `exit 128`
+bu hükmün *sebebi* değil, onunla tutarlı bir olgudur.
+
+🔴 **İKİ GEREKÇE ÖLÇÜLMEMİŞ BİR DAVRANIŞA DAYANIR VE BU AÇIKÇA
+YAZILIDIR:** `bare-repo` ve `submodule` × `git_worktree_path`
+kararlarının gerekçesi "izolasyon mevcutsa kavram uygulanabilir"dir;
+**izolasyon yöneticisinin bare repo ve submodule davranışı BU TURDA
+ÖLÇÜLMEDİ.**
+
+🔴 **KABİLİYET ≠ DAVRANIŞ:** git'in kendi `worktree add` komutu bare
+repoda `exit 0` verdi (`PROBE-RESULTS.md` BLOK 1). Bu **GİT'İN
+kabiliyetidir**; izolasyon yöneticisinin davranışı **DEĞİLDİR** ve onun
+kanıtı **SAYILMAZ**.
+
+#### `failed` AİLESİ (25 hücre)
+
+**ANLAMI:** "ölçüm **DENENDİ** ve **BAŞARISIZ** oldu". Bir alanın ölçüm
+operasyonu o kusur sınıfına **UĞRAYABİLİYORSA** hücre GEÇERLİDİR;
+uğrayamıyorsa GEÇERSİZDİR.
+
+| alan | beş sebep | karar |
+|---|---|---|
+| `git_base_sha` · `git_branch` · `git_toplevel` | `git-missing` · `command-nonzero` · `timeout` · `not-a-repo` · `unusable-output` | **BEŞİ DE GEÇERLİ** (15 hücre) |
+| `git_pty_cwd` | aynı beş | **BEŞİ DE GEÇERSİZ** (5 hücre) |
+| `git_worktree_path` | aynı beş | **BEŞİ DE ÖLÇÜLEMEDİ** (5 hücre) |
+
+Üç git alanı bir **git alt süreci** çalıştırır ve beş kusur sınıfının
+beşine de uğrayabilir; olgu 15 hücrenin 15'ini besler
+(`PROBE-RESULTS.md` BLOK 4).
+
+`git_pty_cwd` bir **GİT ÇAĞRISI DEĞİLDİR**; ölçümü cwd'nin okunmasıdır.
+Git'in yokluğu, timeout'u veya sıfır dışı dönmesi bu ölçümü **ETKİLEMEZ**.
+
+🔴 **KARAR SINIRI:** bu, `git_pty_cwd`'nin **HİÇ** başarısız olamayacağı
+anlamına **GELMEZ**. Başka bir kusur sınıfı (örnek: cwd silinmiş, erişim
+reddedildi) uygulanabilir olabilir. Bu karar **YALNIZ M5'te tanımlı beş
+sebep içindir.** Yeni bir sebep sınıfı gerekirse **M5 açılır**.
+
+🔴 **`git_worktree_path` × beş sebep: ÖLÇÜLEMEDİ — bu bir GEÇERSİZ hükmü
+DEĞİLDİR.** Karar için gereken olgu **YOKTUR**: alan üretimi hiç
+ölçülmedi (izolasyon yöneticisi çalıştırılmadı).
+
+##### BU BEŞ HÜCRENİN KAPATMA YOLU
+
+Bu beş hücrenin kapatma şartı, izolasyon yöneticisinin
+`git_worktree_path` **ÜRETİM OPERASYONUNUN** ölçülmesidir. Bu ölçüm,
+**YALNIZ ÖLÇÜM AMAÇLI** ayrı bir tur olarak **GATE 2'DEN ÖNCE** koşar ve
+**GATE 2'ye BAĞIMLI DEĞİLDİR** — Gate 2'nin **BESLEYİCİSİDİR.**
+
+🔴 **Bu ölçüm turu FIXTURE/PRODUCER IMPLEMENTATION DEĞİLDİR.** Producer
+ve fixture kodu ancak **Gate 2 açıldıktan SONRA** yazılır. İki işi aynı
+iş paketine koymak **YASAKTIR**.
+
+*(Bootstrap kilidi gerekçesi: bir gate, kendi kapatma şartının
+üretilmesini engelleyemez — U-05'te aynı döngü BESLEYICI alanıyla
+çözülmüştü.)*
+
+#### AYIRT EDİLEMEZLİK SINIRI
+
+Beş `failed` sebebi **KAVRAMSAL olarak ayrıdır**, ama bugünkü ölçüm
+yüzeyi (`spawn` + `runGit`) bazı sebepleri **AYNI GÖZLEMLE** üretir —
+ölçüldü (`PROBE-RESULTS.md` BLOK 4):
+
+- `git-missing` ile **var olmayan cwd**: ikisi de `ENOENT` / close `-4058`
+- `timeout`: `exit=null` üzerinden `runGit`'te `command-nonzero` ile
+  **AYNI** hata metni (`git exited null`)
+
+**SONUÇ:** bir üretici, **gözlemden sebebe geri gidemez.** Sebebi
+belirlemek için gözlemden **BAŞKA** bir bilgi gerekir.
+
+🔴 **BU BİR HÜCRE KARARI DEĞİLDİR — hücreler geçerli kalır.** Bu,
+**ÜRETİCİNİN** çözmesi gereken bir **tasarım kısıtıdır**.
+
 ---
 
 ## M6 — EXECUTION FAIL-OPEN / JUDGMENT FAIL-CLOSED
@@ -656,14 +761,24 @@ Alan başına 11 durum × 5 alan = **55 hücrelik** bir uzay vardır.
 | `measured_detached` | 5 | **HEPSİ TANIMLI:** `git_branch_status` için GEÇERLİ, diğer dört alan için GEÇERSİZ (M4 tablosu, M13, W-21) |
 | `not_applicable` | 3 | `git_worktree_path` × `no-isolation` GEÇERLİ (M3); `git_toplevel` ve `git_pty_cwd` × `no-isolation` GEÇERSİZ (P-03) |
 
-### TANIMSIZ — 37 hücre
+### KARARA BAĞLANDI — +32 hücre (sebep-alan eşlemesi turu)
+
+| durum | hücre | kaynak |
+|---|---|---|
+| `not_applicable` | 12 | M5 SEBEP-ALAN EŞLEMESİ (15'in 3'ü zaten sınıflandırılmıştı) |
+| `failed` | 20 | M5: üç git alanı × 5 = 15 GEÇERLİ · `git_pty_cwd` × 5 = 5 GEÇERSİZ |
+
+### TANIMSIZ — 5 hücre
 
 | durum | hücre | not |
 |---|---|---|
-| `not_applicable` | 12 | 15'in 3'ü sınıflandırıldı |
-| `failed` | 25 | hiç sorgulanmadı |
+| `failed` × `git_worktree_path` | 5 | **ÖLÇÜLEMEDİ** — alan üretimi hiç ölçülmedi; bu bir GEÇERSİZ hükmü DEĞİLDİR |
 
-**55 − 18 = 37.** Bu muhasebe AÇIKÇA yazılır; "`measured_detached`
+**55 − 18 − 32 = 5.**
+
+**KAPATMA YOLU:** izolasyon yöneticisinin `git_worktree_path` üretim
+operasyonunun beş `failed` sınıfı açısından ölçülmesi — **GATE 2'nin
+BESLEYİCİSİ**, ona bağımlı DEĞİL (LEDGER T-18). Bu muhasebe AÇIKÇA yazılır; "`measured_detached`
 yalnız branch için" cümlesi tek başına okunursa yalnız BİR hücrenin
 tanımlı olduğu izlenimi verir — oysa beş hücrenin beşi de tanımlıdır
 (biri GEÇERLİ, dördü GEÇERSİZ).
