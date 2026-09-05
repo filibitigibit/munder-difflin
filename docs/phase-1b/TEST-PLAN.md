@@ -22,6 +22,28 @@ Her vaka kalıcı bir kimlik taşır ve **yedi zorunlu alan** hâlinde yazılır
 | `GATE BAGIMLILIGI` | **İSTEĞE BAĞLI ALAN.** Vakanın koşulabilmesi için açılması gereken gate. **Boş ise vaka, bulunduğu dilimin gate'ine tabidir.** |
 | `BESLEYICI` | **İSTEĞE BAĞLI ALAN.** Vakanın ürettiği ölçüm bir gate'in ŞARTINI besliyorsa yazılır. Besleyici kalem o gate'e **BAĞIMLI DEĞİLDİR.** |
 
+## AYIRT EDİCİ GÜÇ
+
+**Bir testin geçmesi, test ettiği mekanizmanın ÇALIŞTIĞINI KANITLAMAZ.**
+
+**ÖLÇÜLDÜ (sonda turu, 52 vektör):** `provenance_complete` mekanizması
+**HİÇ YOKKEN** 52 vektörün **48'i yine geçer** — çünkü sütunun
+varsayılan değeri tesadüfen doğru çıkar. Sonda anında ölçülen ayırt
+edici güç **4 vektörde** toplanmıştır ve mevcut planda **F-12** ile
+temsil edilmiştir.
+
+🔴 **Bu turda eklenen yeni ÇAKMA vakası (F-14) HENÜZ KOŞULMAMIŞTIR;
+ayırt edici olduğu PROVEN DEĞİLDİR.**
+
+**KURAL:** türetilmiş bir alan için yazılan her test kümesinde,
+**mekanizma KALDIRILDIĞINDA hangi vakaların DÜŞTÜĞÜ ayrıca ölçülür.**
+**Düşmeyen vakalar o mekanizmanın kanıtı SAYILMAZ.**
+
+Bu, ÇAKMA'nın bu alandaki zorunlu karşılığıdır.
+
+**NE DEMEK DEĞİLDİR:** düşmeyen bir vaka DEĞERSİZ değildir — başka bir
+şeyi ölçüyor olabilir. Yalnız **o mekanizmanın** kanıtı sayılmaz.
+
 ## BESLEYICI alanının anlamı
 
 `BESLEYICI` **isteğe bağlı** bir alandır. Bir vakanın ÜRETTİĞİ ölçüm,
@@ -151,32 +173,27 @@ DİLİM 1 kodunu bloke etmediğini gösterir. Gate 1'in anlamı: "elimizde
 bugün DİLİM 1 kodunu yasaklayan BİLİNEN bir engel yok."
 **Bu, "DİLİM 1 kusursuzdur" DEMEK DEĞİLDİR.**
 
-**DURUM (sonda turu ölçümü): KAPALI.**
+**DURUM (mekanizma kilitleme turu ölçümü): AÇIK.**
 
 | şart | ölçülen |
 |---|---|
 | `ATANAMADI` | **0** |
-| DİLİM 1 kapsamını belirsiz bırakan KAYITLI KALEM | **1** |
+| DİLİM 1 kapsamını belirsiz bırakan KAYITLI KALEM | **0** |
 
-Kapatan kalem: **F-12** — `provenance_complete`'in sürdürme mekanizması
-tanımsız. DİLİM 1 kapsamındaki **şema göçünü** ve **12 sütunun tanımını**
-belirsiz bırakır. Kalem `GATE BAGIMLILIGI: GATE 1` ile İŞARETLİDİR ve
-sayaçta görünür.
+Gate 1'i kapatan tek kalem **F-12** idi; engeli `provenance_complete`
+mekanizmasının tanımsızlığıydı. Mekanizma **M13 PROVENANCE_COMPLETE
+MEKANİZMASI** bölümünde KİLİTLENDİ (VIRTUAL generated column) ve
+F-12'nin `GATE BAGIMLILIGI` satırı KALDIRILDI.
 
-**NİÇİN v3.9'DA AÇIK GÖRÜNÜYORDU:** eski şart yalnız *çelişki* sayıyordu;
-F-12 bir *belirsizliktir*. Şart genişletildi (bkz. GEREKÇE), kalem
-işaretlendi, sayaç artık 1 veriyor. **Ölçüm değişmedi — ŞART ve GİRDİ
-MODELİ düzeldi.**
+**ALTI YAPININ ALTISI DA BELİRLİ:** şema göçü (`ADD COLUMN ... VIRTUAL`,
+ölçüldü) · 12 sütun · `measured` · `never_measured` · M4 yapısal CHECK ·
+OLD→NEW trigger.
 
-**SONDA SONUCU (bu turda ölçüldü):** mekanizma adaylarının davranışı
-ölçüldü ve aday listesi DARALDI — `generated STORED` satırı olan tabloya
-`ALTER TABLE ADD COLUMN` ile **EKLENEMEZ** (`cannot add a STORED column`).
-Ama **hangi adayın seçileceği bir CTO kararıdır** ve bu tur onu VERMEZ;
-gate seçim yapılana kadar KAPALI kalır.
-
-**BU ÖLÇÜM NEYİ KANITLAMIYOR:** `= 1` yalnız İŞARETLİ kalemleri sayar.
+**BU ÖLÇÜM NEYİ KANITLAMIYOR:** `= 0` yalnız İŞARETLİ kalemleri sayar.
 İşaretlenmemiş bir engel bu sayaçta görünmez; sayaç, kayıt disiplini
-kadar iyidir.
+kadar iyidir. Gate 1'in açılması DİLİM 1'in KUSURSUZ olduğunu
+KANITLAMAZ — yalnız BİLİNEN bir engelin kalmadığını gösterir.
+
 #### GATE 2 — FIXTURE / PRODUCER DİLİMİ  (BİLİNEN ENGEL GATE'İ)
 
 Şartlar: GATE 1 açık · sebep-alan eşlemesi tanımlı
@@ -1265,13 +1282,12 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 
 #### F-12 · provenance_complete elle yazılamaz
 - ID: F-12
-- MADDE: M6
+- MADDE: M6, M13
 - SINIF: REDDETME
 - DILIM: DILIM 1
-- GATE BAGIMLILIGI: GATE 1 (provenance_complete mekanizması tanımsız)
-- GIRDI: Alan durumları false gerektirirken `provenance_complete` doğrudan true yazılmaya çalışılır.
-- BEKLENEN GOZLEM: Yazma reddedilir veya türetilmiş değer kazanır; geri okunan değer false'tur.
-- IZIN VERILEN HUKUM: Bayrak mekanik türetilir; bir yazıcı onu alan durumlarından bağımsız olarak beyazlatamaz.
+- GIRDI: Alan durumları false gerektirirken `provenance_complete` alanına doğrudan true yazılmaya çalışılır. Üç yazma biçimi de denenir: `INSERT`, `UPDATE`, `INSERT OR REPLACE`.
+- BEKLENEN GOZLEM: Üç denemenin her biri de SQLite tarafından REDDEDİLİR. `INSERT` ve `INSERT OR REPLACE` `cannot INSERT into generated column "provenance_complete"`, `UPDATE` ise `cannot UPDATE generated column "provenance_complete"` verir. Yazma sonrası geri okunan değer, beş durum sütunundan türetilen değerdir (bu girdide false).
+- IZIN VERILEN HUKUM: Bayrak M13 PROVENANCE_COMPLETE MEKANİZMASI uyarınca VIRTUAL GENERATED COLUMN'dur; bir yazıcı onu alan durumlarından bağımsız olarak beyazlatamaz çünkü **yazma yüzeyi ŞEMA DÜZEYİNDE YOKTUR**. Ret bir CHECK'ten veya trigger'dan GELMEZ — sütunun generated olmasından gelir. **Bu vaka "bayrak her zaman doğrudur" hükmünü KURMAZ**; yalnız ELLE BEYAZLATILAMADIĞINI kurar. Türetme kuralının kendisi F-01..F-10 tarafından ölçülür.
 
 #### F-13 · bayrak okuma yüzeyinden erişilebilir
 - ID: F-13
@@ -1281,6 +1297,15 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - GIRDI: `provenance_complete` değeri false ve true olan iki run.
 - BEKLENEN GOZLEM: Run okuma yüzeyi (`getRun` benzeri) her iki run için bayrağı doğru değeriyle döndürür.
 - IZIN VERILEN HUKUM: Faz 1B'nin taahhüdü — bayrağı TAŞINABİLİR kılmak — karşılanmıştır. Bu, bayrağın UYGULANDIĞI anlamına GELMEZ; bkz. AÇIK BORÇ.
+
+#### F-14 · ÇAKMA: provenance_complete mekanizması kaldırıldığında F-12 düşer
+- ID: F-14
+- MADDE: M6, M13
+- SINIF: POZITIF_KONTROL
+- DILIM: DILIM 1
+- GIRDI: Üç adım. (1) Şema, `provenance_complete` VIRTUAL generated sütunu YERİNE aynı adlı DÜZ bir sütunla kurulur (mekanizma kaldırılmıştır). (2) F-12 bu şema üzerinde koşulur. (3) Mekanizma BİREBİR geri yüklenir ve şema metninin `sha256`'sı, kaldırma öncesi alınan `sha256` ile karşılaştırılır; sonra F-12 tekrar koşulur.
+- BEKLENEN GOZLEM: Adım (2)'de **F-12 DÜŞER** — düz sütuna yazma kabul edilir, ret gelmez. Adım (3)'te `sha256` değerleri BİREBİR eşittir ve F-12 tekrar GEÇER.
+- IZIN VERILEN HUKUM: F-12'nin geçmesi, `provenance_complete` mekanizmasının VARLIĞINA bağlıdır — mekanizma yokken de geçen bir vaka o mekanizmanın kanıtı olmazdı. **Bu vaka F-12'nin AYIRT EDİCİ olduğunu kurar, mekanizmanın DOĞRU olduğunu değil** (doğruluk F-01..F-10'un işidir). **`sha256` eşitliği yalnız şema metninin geri geldiğini kanıtlar**, kaldırma sırasında başka bir yan etki oluşmadığını KANITLAMAZ. **Bu vaka bugün KOŞULMAMIŞTIR;** ayırt ediciliği ÖLÇÜLMEDİ, sonda turunun 52-vektör ölçümünden ÇIKARSANMIŞTIR.
 
 ---
 

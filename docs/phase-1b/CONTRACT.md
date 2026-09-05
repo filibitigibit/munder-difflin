@@ -434,6 +434,10 @@ doğrulandı — kalan üç alanda ÖLÇÜLMEDİ. Üretim DB'sinde
 (`harness.db`) ÖLÇÜLMEDİ; gerçek boyutlu bir tabloda süre ÖLÇÜLMEDİ;
 WAL modunda açık okuyucu varken ÖLÇÜLMEDİ.
 
+`provenance_complete` `ADD COLUMN ... VIRTUAL` ile eklenir; göç
+sonrası v2 satırları kuralın gerektirdiği değeri alır (ölçüldü:
+`pc=0`).
+
 **SONUÇ:** M10'un satır kümesi koruması — satır kaybı, çoğaltma,
 kimlik değişimi — artık yalnız TEST EDİLEN bir özellik değil,
 seçilen göç şeklinin YAPISAL sonucudur. Testler bunu yine de
@@ -529,6 +533,44 @@ dört alanda bu durum yazılamaz.
 
 **YERLEŞİM:** 11 provenance sütunu `runs` tablosunda durur; ayrı bir
 tablo KULLANILMAZ. Gerekçe M10 GÖÇ ŞEKLİ bölümünde yazılıdır.
+
+### PROVENANCE_COMPLETE MEKANİZMASI
+
+`provenance_complete` bir **VIRTUAL GENERATED COLUMN**'dur. Değeri beş
+M13 durum sütunundan M6'nın türetme kuralına göre hesaplanır.
+**Saklanmaz; her okumada üretilir.**
+
+**GEREKÇE — ÖLÇÜLDÜ** (SQLite 3.49.2 / better-sqlite3 11.10.0, scratch
+in-memory DB, 52 vektör):
+
+1. **A-STORED FİİLEN KURULAMAZ:** satırlı bir tabloda
+   `ALTER TABLE ADD COLUMN ... STORED` reddediliyor
+   (`cannot add a STORED column`). Üretim `runs` tablosunda satır
+   vardır. **Boş tabloda kabul edilmesi yanıltıyordu**; ilk sonda bu
+   yanılgıya düştü ve düzeltildi.
+2. **A-VIRTUAL ve B (trigger) türetme kuralını 52/52 doğru üretiyor** —
+   ikisi de davranışsal olarak yeterli.
+3. **AYIRT EDİCİ ÖLÇÜM:** `UPDATE runs SET provenance_complete=1`
+   A-VIRTUAL'da **REDDEDİLİYOR** (`cannot UPDATE generated column`);
+   B'de **KABUL EDİLİYOR** ve değer 1 kalıyor. F-12'nin koruduğu şey
+   tam olarak budur: **türetilmiş bir bayrak ELLE BEYAZLATILAMAZ.**
+   A-VIRTUAL bunu **YAPISAL** olarak sağlar. B ancak ek bir guard
+   trigger'ıyla sağlar ve o zaman M4'ün bağlaşım trigger'ının yanına
+   **iki trigger daha** girer.
+4. **Sütun tanımı:** `hidden=2, notnull=0`. B'nin düz sütunu
+   `hidden=0, notnull=1, default 0` olurdu — yani **mekanizma yokken
+   bile "tamam" görünen bir varsayılan** taşırdı.
+
+**BU KARARIN MANTIĞI M10 İLE AYNIDIR:** M10'da satır kümesi koruması
+testten **ŞEMAYA** taşınmıştı. Burada da bayrağın dokunulmazlığı
+testten **ŞEMAYA** taşınıyor.
+
+**BEDEL — ÖLÇÜLDÜ VE KABUL EDİLDİ:** VIRTUAL her okumada hesaplanır.
+**Performans ÖLÇÜLMEDİ** ve borç olarak kaydedilir.
+
+**KAPSAM SINIRI:** bu ölçüm scratch in-memory DB'de yapıldı. Üretim
+`harness.db`'sinde, WAL modunda, toplu UPDATE'te ve eşzamanlı
+okuyucuyla **ÖLÇÜLMEDİ**.
 
 **AÇIK BORÇ — OKUMA SEMANTİĞİ:** bir tüketicinin aynı kavram için hem
 legacy sütunu hem M13 sütununu gördüğünde hangisini hangi hükümde

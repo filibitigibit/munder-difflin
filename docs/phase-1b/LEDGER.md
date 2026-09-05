@@ -134,7 +134,8 @@ Değerler: `AÇIK` · `KAPALI` · `ÖLÇÜLEMEDİ-RECONSTRUCTION`.
 | T-8 | denetlenmemiş bağ | madde çiftlerinin denetlenmesi | hiçbiri (görünürlük metriği) | her tur raporlanır | **AÇIK — 80/91** (11 denetlenmiş) | repo |
 | T-9 | hive `log.jsonl` +5 satırı | sahibin kararı (geri al / kabul et) | hiçbiri | sahip karar verdiğinde | **AÇIK** (+5 / −0) | git |
 | T-10 | C-03 enforcement katmanı — `checkpoint_sha_source` reddi | reddi uygulayacak yüzeyin adıyla belirlenmesi | **GATE 3** | C-03 koşulmadan önce | **AÇIK** — tetikleyici bu turda vakaya YAZILDI | repo |
-| T-11 | `provenance_complete` sürdürme mekanizması — aday seçimi | mekanizmanın ADIYLA seçilmesi | **GATE 1** | DİLİM 1 göçü yazılmadan ÖNCE | **AÇIK — ama aday listesi DARALDI** (sonda turu); F-12 `GATE BAGIMLILIGI: GATE 1` ile işaretli, Gate 1 KAPALI | repo + ölçüm |
+| T-11 | `provenance_complete` sürdürme mekanizması — aday seçimi | mekanizmanın ADIYLA seçilmesi | GATE 1 | DİLİM 1 göçü yazılmadan ÖNCE | 🟢 **KAPALI** — CTO A-VIRTUAL'ı seçti; M13 PROVENANCE_COMPLETE MEKANİZMASI'nda kilitlendi | repo + ölçüm |
+| T-12 | A-VIRTUAL performansı | üretim boyutlu tabloda okuma süresinin ölçülmesi | hiçbiri (borç) | performans şüphesi doğduğunda | **AÇIK** — VIRTUAL her okumada hesaplanır; **ÖLÇÜLMEDİ** | ölçüm sınırı |
 
 ### T-11 SONDA SONUCU (scratch DB, davranış ölçümü)
 
@@ -170,8 +171,13 @@ tanım gereği geçemez — bu bir BELGE ÇIKARIMIDIR, davranış ölçümü de�
 **T-8 İKİYE AYRILIR:** bağ borcunun kendisi **AÇIK** (80/91); bu borcu
 YANLIŞ ÖLÇEN aracın kusuru **KAPALI** (bkz. BÖLÜM 4, A-1).
 
-**Hiçbir kalem KAPALI çıkmadı.** ON BİR kalemin on biri de repo
-kanıtıyla açık doğrulandı; hiçbiri "otomatik açık" sayılmadı.
+**İLK KAPANAN KALEM: T-11.** ON İKİ kalemin **biri KAPALI**, on biri
+AÇIK — her biri repo kanıtından doğrulandı, hiçbiri "otomatik açık"
+sayılmadı.
+
+🔴 **T-11 KAPANDI AMA BORÇ TAM ERİMEDİ:** yerine T-12 (performans)
+açıldı. Bir kararın verilmesi, o kararın BEDELİNİN ölçüldüğü anlamına
+GELMEZ.
 
 🔴 **T-11 DİĞERLERİNDEN FARKLIDIR:** bir DİLİM 1 YAPISINI (şema göçü,
 12 sütun) belirsiz bırakır. Diğer on kalem DİLİM 1 kodunu yazmayı
