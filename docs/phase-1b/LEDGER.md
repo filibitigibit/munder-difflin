@@ -134,7 +134,38 @@ Değerler: `AÇIK` · `KAPALI` · `ÖLÇÜLEMEDİ-RECONSTRUCTION`.
 | T-8 | denetlenmemiş bağ | madde çiftlerinin denetlenmesi | hiçbiri (görünürlük metriği) | her tur raporlanır | **AÇIK — 80/91** (11 denetlenmiş) | repo |
 | T-9 | hive `log.jsonl` +5 satırı | sahibin kararı (geri al / kabul et) | hiçbiri | sahip karar verdiğinde | **AÇIK** (+5 / −0) | git |
 | T-10 | C-03 enforcement katmanı — `checkpoint_sha_source` reddi | reddi uygulayacak yüzeyin adıyla belirlenmesi | **GATE 3** | C-03 koşulmadan önce | **AÇIK** — tetikleyici bu turda vakaya YAZILDI | repo |
-| T-11 | `provenance_complete` sürdürme mekanizması — generated column mu, trigger mı, uygulama katmanı mı | mekanizmanın ADIYLA seçilmesi | **GATE 1 (yeni engel)** | DİLİM 1 göçü yazılmadan ÖNCE | **AÇIK** — bu turda ölçüldü; 17 vakanın hiçbiri mekanizma adı taşımıyor | repo |
+| T-11 | `provenance_complete` sürdürme mekanizması — aday seçimi | mekanizmanın ADIYLA seçilmesi | **GATE 1** | DİLİM 1 göçü yazılmadan ÖNCE | **AÇIK — ama aday listesi DARALDI** (sonda turu); F-12 `GATE BAGIMLILIGI: GATE 1` ile işaretli, Gate 1 KAPALI | repo + ölçüm |
+
+### T-11 SONDA SONUCU (scratch DB, davranış ölçümü)
+
+Ortam: SQLite **3.49.2** · better-sqlite3 **11.10.0** · Electron **32.3.3**
+/ Node **20.18.1** / ABI **128** — üretimde koşanla **AYNI** (aynı
+`node_modules`, `ELECTRON_RUN_AS_NODE`).
+
+| aday | ölçüm seviyesi | sonuç |
+|---|---|---|
+| **A-VIRTUAL** generated column | **DAVRANIŞ ÖLÇÜLDÜ** | M6 türetmesi 52/52 doğru; satırlı tabloya `ADD COLUMN` ile eklenir; F-12 **yapısal olarak geçer** (`cannot UPDATE generated column`) |
+| **A-STORED** generated column | **DAVRANIŞ ÖLÇÜLDÜ** | 🔴 **FİİLEN KURULAMAZ** — satırı olan tabloda `cannot add a STORED column`. Boş tabloda kabul edilir; bu yüzden ilk sonda YANILTICIYDI. |
+| **B** trigger (2 trigger) | **DAVRANIŞ ÖLÇÜLDÜ** | M6 türetmesi 52/52 doğru; ama F-12 **BAŞARISIZ** — `provenance_complete` elle yazılabiliyor |
+| **B-guard** trigger (3 trigger) | **DAVRANIŞ ÖLÇÜLDÜ** | M6 doğru; F-12 **geçer** (hem ABORT hem OVERWRITE varyantı) |
+| **C** uygulama katmanı | 🔴 **DAVRANIŞ ÖLÇÜLMEDİ — yalnız KAYNAK OKUNDU** | `runs` tablosuna yazan **3** SQL noktası, hepsi `runs.ts` içinde, dışarıda yazıcı YOK |
+
+**A ve B aynı fiziksel sütunu PAYLAŞMIYOR** (ölçüldü): A `hidden=2`
+(virtual generated), B `hidden=0, notnull=1, default 0`. Açılış
+varsayımının "üç farklı sütun tipi" kısmı A/B için DOĞRULANDI.
+
+**M4 bağlaşım trigger'ıyla çakışma:** `recursive_triggers` 0 ve 1'de
+ayrı ayrı ölçüldü; A ve B'de M4 trigger'ı doğru abort ediyor, B'nin
+iç UPDATE'i M4'ü tetiklemiyor. **Çakışma GÖZLENMEDİ.**
+
+🔴 **ADAY C İÇİN KURULABİLECEK TEK HÜKÜM:** mimari bunu taşımaya
+elverişli görünüyor (tek yazıcı dosya). **"Uygulama katmanı bunu doğru
+üretir ve güncel tutar" hükmü KURULAMAZ** — davranış ölçülmedi, `src/`
+kilitliydi. Ayrıca F-12 bir **DİLİM 1** (DB-only) vakasıdır; uygulama
+katmanı o dilimde hiç çalışmaz, dolayısıyla ADAY C altında F-12
+tanım gereği geçemez — bu bir BELGE ÇIKARIMIDIR, davranış ölçümü değil.
+
+**KARAR VERİLMEDİ.** Aday seçimi CTO'nundur.
 
 **T-8 İKİYE AYRILIR:** bağ borcunun kendisi **AÇIK** (80/91); bu borcu
 YANLIŞ ÖLÇEN aracın kusuru **KAPALI** (bkz. BÖLÜM 4, A-1).

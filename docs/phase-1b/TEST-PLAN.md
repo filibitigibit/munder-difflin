@@ -8,7 +8,7 @@ yazılmadı, şema değiştirilmedi.
 
 ## Okuma kuralı
 
-Her vaka kalıcı bir kimlik taşır ve **yedi zorunlu alan** hâlinde yazılır. Sekizinci alan `GATE BAGIMLILIGI` **isteğe bağlıdır**; yokluğu bir eksiklik değildir.
+Her vaka kalıcı bir kimlik taşır ve **yedi zorunlu alan** hâlinde yazılır. Bunlara ek olarak **isteğe bağlı** alanlar vardır (`GATE BAGIMLILIGI`, `BESLEYICI`); yoklukları bir eksiklik DEĞİLDİR. **Sayı yazılmaz** — alan eklendiğinde donmuş bir sayı yanlışa döner.
 
 | alan | anlamı |
 |---|---|
@@ -20,6 +20,28 @@ Her vaka kalıcı bir kimlik taşır ve **yedi zorunlu alan** hâlinde yazılır
 | `IZIN VERILEN HUKUM` | bu gözlemin desteklediği EN GENİŞ hüküm |
 | `DILIM` | `DILIM 1` \| `FIXTURE DILIMI` \| `ATANAMADI` — hangi uygulama diliminde koşulur |
 | `GATE BAGIMLILIGI` | **İSTEĞE BAĞLI ALAN.** Vakanın koşulabilmesi için açılması gereken gate. **Boş ise vaka, bulunduğu dilimin gate'ine tabidir.** |
+| `BESLEYICI` | **İSTEĞE BAĞLI ALAN.** Vakanın ürettiği ölçüm bir gate'in ŞARTINI besliyorsa yazılır. Besleyici kalem o gate'e **BAĞIMLI DEĞİLDİR.** |
+
+## BESLEYICI alanının anlamı
+
+`BESLEYICI` **isteğe bağlı** bir alandır. Bir vakanın ÜRETTİĞİ ölçüm,
+bir gate'in ŞARTINI besliyorsa o gate adıyla yazılır.
+
+🔴 **BESLEYİCİ KALEM O GATE'E BAĞIMLI DEĞİLDİR** ve o gate açılmadan
+KOŞABİLİR. Aksi hâlde gate, kendi şartının üretilmesini engeller —
+**bootstrap kilidi.**
+
+**ÖLÇÜLEN GEREKÇE:** U-05 `FIXTURE DILIMI`'ndedir ve dilimi GATE 2'ye
+tabidir; ama ürettiği şey GATE 2'nin şartının (`sebep-alan eşlemesi
+tanımlı`) parçasıdır. Bağımlı sayılsaydı GATE 2 hiç açılamazdı.
+
+**CTO KARARI:** bir gate'in şartı ÖLÇÜM TURLARINI DIŞLAMAZ. Bir vaka
+bir gate'in şartını besliyorsa o gate'e BAĞIMLI SAYILMAZ —
+**BESLEYİCİ** kalemdir.
+
+**`GATE BAGIMLILIGI` İLE KARIŞTIRILMAZ:** biri "bu gate açılmadan
+KOŞAMAZ" der, diğeri "bu gate'in açılması BUNA BAĞLIDIR" der. Bir
+vaka ikisini aynı gate için AYNI ANDA taşıyamaz.
 
 ## GATE BAGIMLILIGI alanının anlamı
 
@@ -71,10 +93,20 @@ SEMANTİK TAMLIĞI. İkisi aynı cümlede karıştırılmaz.
 | şart | ölçüm |
 |---|---|
 | `ATANAMADI` | **= 0** |
-| DİLİM 1 KAPSAMINI BELİRSİZ BIRAKAN KAYITLI ÇELİŞKİ | **= 0** |
+| DİLİM 1 KAPSAMINI BELİRSİZ BIRAKAN KAYITLI KALEM | **= 0** |
 
-Bir kayıtlı çelişki Gate 1'i ancak **DİLİM 1'in KAPSAMINDAKİ** bir
-yapıyı belirsiz bırakıyorsa kapatır.
+Bir kayıtlı **kalem** Gate 1'i ancak **DİLİM 1'in KAPSAMINDAKİ** bir
+yapıyı belirsiz bırakıyorsa kapatır. **Kalemin SINIFI ne olursa
+olsun:** çelişki · belirsizlik · tanımsız mekanizma · adsız yüzey.
+
+🔴 **GEREKÇE — ÖLÇÜLDÜ:** bir belirsizlik bir çelişkiden daha az
+engelleyici DEĞİLDİR. F-12 hiçbir tanımla çelişmiyor ama şema göçünü
+yazılamaz kılıyordu. **Sınıflandırma engeli ortadan kaldırmaz, yalnız
+görünmez kılar.** Gate 1 artık BELİRSİZLİĞİ de ölçer.
+
+**GİRDİ MODELİ:** bu şartın mekanik sayılabilmesi için engel taşıyan
+her kalem `GATE BAGIMLILIGI` alanıyla İŞARETLİ olmalıdır. İşaretsiz
+bir engel sayaçta 0 üretir ve gate YANLIŞLIKLA açık çıkar.
 
 **DİLİM 1 KAPSAMI — DİLİM 1'İN ÜRETTİĞİ YAPILAR:**
 
@@ -119,57 +151,32 @@ DİLİM 1 kodunu bloke etmediğini gösterir. Gate 1'in anlamı: "elimizde
 bugün DİLİM 1 kodunu yasaklayan BİLİNEN bir engel yok."
 **Bu, "DİLİM 1 kusursuzdur" DEMEK DEĞİLDİR.**
 
-**DURUM (v3.9 ölçümü): AÇIK.**
+**DURUM (sonda turu ölçümü): KAPALI.**
 
 | şart | ölçülen |
 |---|---|
-| `ATANAMADI` | **0** (107 vakanın tamamı dilim taşıyor) |
-| DİLİM 1 kapsamını belirsiz bırakan kayıtlı çelişki | **0** |
+| `ATANAMADI` | **0** |
+| DİLİM 1 kapsamını belirsiz bırakan KAYITLI KALEM | **1** |
 
-Kayıtlı çelişki **1** adettir: **C-07** — öznesi
-(`git_worktree_path`'in checkpoint karşılığı) M1 KOPYALAMA
-KÜMESİ'ne göre YOKTUR. Altı yapının her biri için ADIYLA
-değerlendirildi:
+Kapatan kalem: **F-12** — `provenance_complete`'in sürdürme mekanizması
+tanımsız. DİLİM 1 kapsamındaki **şema göçünü** ve **12 sütunun tanımını**
+belirsiz bırakır. Kalem `GATE BAGIMLILIGI: GATE 1` ile İŞARETLİDİR ve
+sayaçta görünür.
 
-| DİLİM 1 yapısı | C-07 belirsiz bırakıyor mu | ölçülen gerekçe |
-|---|---|---|
-| şema göçü | HAYIR | C-07 hiçbir sütunu ADIYLA istemiyor (ölçüldü: gövdesinde `checkpoint_<ad>` geçişi yok; pozitif kontrol C-08'de 4 ad) |
-| 12 sütun (M13'ün 11'i + `checkpoint_sha_source`) | HAYIR | sayı iki ayrı yerde yazılı (M13 "Toplam 11", "TOPLAM ... **12**"); M1 ek sütunu AÇIKÇA yasaklıyor |
-| `measured` | HAYIR | C-07 `not_applicable` hakkında; `measured`'ın tanımına dokunmuyor |
-| `never_measured` | HAYIR | C-07 gövdesinde geçmiyor |
-| M4 yapısal CHECK | HAYIR | M4 KAPSAM checkpoint alanlarını CHECK'ten AÇIKÇA dışlıyor |
-| OLD→NEW trigger | HAYIR | trigger M13 değer/durum çiftlerini bağlar; C-07'nin öznesi M13 sütunu değil |
+**NİÇİN v3.9'DA AÇIK GÖRÜNÜYORDU:** eski şart yalnız *çelişki* sayıyordu;
+F-12 bir *belirsizliktir*. Şart genişletildi (bkz. GEREKÇE), kalem
+işaretlendi, sayaç artık 1 veriyor. **Ölçüm değişmedi — ŞART ve GİRDİ
+MODELİ düzeldi.**
 
-**6 yapının 6'sı için cevap HAYIR.** C-07 Gate 1'i kapatmaz; ait
-olduğu gate `GATE BAGIMLILIGI` alanında YAZILIDIR (GATE 2).
+**SONDA SONUCU (bu turda ölçüldü):** mekanizma adaylarının davranışı
+ölçüldü ve aday listesi DARALDI — `generated STORED` satırı olan tabloya
+`ALTER TABLE ADD COLUMN` ile **EKLENEMEZ** (`cannot add a STORED column`).
+Ama **hangi adayın seçileceği bir CTO kararıdır** ve bu tur onu VERMEZ;
+gate seçim yapılana kadar KAPALI kalır.
 
-🔴 **SONRAKİ TURDA ÖLÇÜLDÜ — YENİ DİLİM 1 ENGELİ (F-12).**
-`provenance_complete`'in TÜRETME KURALI M6'da tam tanımlıdır, ama
-onu SÜRDÜREN MEKANİZMA külliyatta HİÇBİR YERDE adlandırılmamıştır
-(ölçüldü: alanı anan **17 vakanın hiçbiri** bir mekanizma adı
-taşımıyor; `GENERATED` sözcüğünün tek geçişi M4 Invaryant B
-hakkındadır, bu alan hakkında değil). Üç aday — generated column ·
-trigger · uygulama katmanı — **ÜÇ FARKLI `ADD COLUMN` ifadesi**
-üretir. Bu, DİLİM 1 kapsamındaki **şema göçünü** ve **12 sütunun**
-tanımını BELİRSİZ BIRAKIR.
-
-**GATE 1'İN YAZILI ŞARTI BUNU GÖRMEZ:** F-12 bir ÇELİŞKİ değil,
-bir BELİRSİZLİKTİR ve bu plan "hiçbir gate belirsizliği ölçmez"
-der. Dolayısıyla şart harfiyen hâlâ **0** verir.
-
-🔴 **AMA GATE 1'İN ANLAMI BUGÜN GEÇERSİZDİR.** Gate 1'in yazılı
-anlamı "DİLİM 1 kodunu yasaklayan BİLİNEN bir engel yok"tur; böyle
-bir engel ÖLÇÜLDÜ. Şart, ölçtüğü riskten DAR yazılmıştır.
-**Gate 1 bu tespitle KENDİLİĞİNDEN kapanmaz** — belirsizliğin gate
-kapatıp kapatmayacağı bir CTO kararıdır ve bu tur o kararı VERMEZ.
-Kalem LEDGER'da **T-11** olarak ADIYLA kayıtlıdır.
-
-**BU ÖLÇÜM NEYİ KANITLAMIYOR:** çelişki taraması İKİ BELGE üzerinde
-DESEN tabanlıdır (checkpoint öznesi · legacy ad · tanımsız madde
-atfı · belirsizlik imleri). Hiçbir desene uymayan SEMANTİK bir
-çelişki bu taramada GÖRÜNMEZ. "Kayıtlı çelişki = 1" ifadesi
-"çelişki = 1" DEMEK DEĞİLDİR.
-
+**BU ÖLÇÜM NEYİ KANITLAMIYOR:** `= 1` yalnız İŞARETLİ kalemleri sayar.
+İşaretlenmemiş bir engel bu sayaçta görünmez; sayaç, kayıt disiplini
+kadar iyidir.
 #### GATE 2 — FIXTURE / PRODUCER DİLİMİ  (BİLİNEN ENGEL GATE'İ)
 
 Şartlar: GATE 1 açık · sebep-alan eşlemesi tanımlı
@@ -1060,6 +1067,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M5
 - SINIF: KABUL
 - DILIM: FIXTURE DILIMI
+- BESLEYICI: GATE 2 (sebep-alan eşlemesi tanımını üretir)
 - GIRDI: M13'ün beş alanının her biri için, boş çıktının meşru "yok" mu yoksa `unusable` mı olduğu producer ölçülerek belirlenir (örnek: upstream sorgusu upstream yokken meşru olarak boş döner).
 - BEKLENEN GOZLEM: Beş alanın her biri için "boş çıktı = meşru yok" veya "boş çıktı = unusable" kararı ölçümle üretilir ve tabloya yazılır. Karar verilemeyen alan ÖLÇÜLMEDİ olarak işaretlenir, varsayılan bir sınıfa atanmaz.
 - IZIN VERILEN HUKUM: M5'in KAPSAM SINIRI bu dilimde kapanır. **Bugün bu eşleme TANIMSIZDIR ve ÖLÇÜLMEDİ olarak taşınır**; bu vaka onu tanımlamayı zorunlu kılar, tanımı önceden VERMEZ.
@@ -1260,6 +1268,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - MADDE: M6
 - SINIF: REDDETME
 - DILIM: DILIM 1
+- GATE BAGIMLILIGI: GATE 1 (provenance_complete mekanizması tanımsız)
 - GIRDI: Alan durumları false gerektirirken `provenance_complete` doğrudan true yazılmaya çalışılır.
 - BEKLENEN GOZLEM: Yazma reddedilir veya türetilmiş değer kazanır; geri okunan değer false'tur.
 - IZIN VERILEN HUKUM: Bayrak mekanik türetilir; bir yazıcı onu alan durumlarından bağımsız olarak beyazlatamaz.
