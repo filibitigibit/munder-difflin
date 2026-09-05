@@ -26,6 +26,47 @@ run-start provenance: run başlarken, PTY'nin fiilen kullanacağı cwd
 REDDEDİLİR. Checkpoint değerinden "checkpoint anındaki durum" hükmü
 kurulamaz.
 
+### KOPYALAMA KÜMESİ
+
+Faz 1B'de checkpoint tarafına kopyalanan alan kümesi TAM OLARAK
+ŞUDUR:
+
+```
+git_base_sha  ->  checkpoint_sha
+```
+
+Başka hiçbir M13 alanının checkpoint karşılığı YOKTUR.
+`git_branch`, `git_toplevel`, `git_pty_cwd` ve `git_worktree_path`
+için checkpoint sütunu OLUŞTURULMAZ.
+
+**GEREKÇE:** checkpoint, quit yolunda git ÇALIŞTIRMAMA kararının
+sonucudur (M1 ÖLÇÜM ANI). Run-start'ta ölçülen değerler zaten aynı
+satırda durur ve okunabilir. Beş alanı da kopyalamak veriyi İKİLER
+ve "hangi kopya taze" sorusunu doğurur — bu soru M1'in çözmek için
+kurulduğu sorunun kendisidir.
+
+**KOPYANIN NEYİ TAŞIDIĞI:** checkpoint tarafında DURUM SÜTUNU YOKTUR
+(M4 KAPSAM). Checkpoint, run-start DURUMUNU yeniden KODLAMAZ.
+Kopyalanan şey yalnızca DEĞERDİR; sınıf her zaman run-start durum
+sütununda (`git_base_sha_status`) kalır ve yalnız oradan okunur.
+
+**"Sınıf koruyuculuk" ifadesi, checkpoint tarafında bir sınıf
+saklandığı anlamına GELMEZ.** Böyle okunursa olmayan bir
+`checkpoint_sha_status` fikri arka kapıdan geri gelir.
+
+**M15 GEREĞİ: bu küme SAYILMIŞTIR.** "Checkpoint run-start'ın
+kopyasıdır" ifadesi tek başına bir küme tanımlamaz.
+
+**KAPSAM — İKİ SINIR.** (1) Bu karar Faz 1B içindir. İleride başka
+bir alanın checkpoint karşılığı gerekirse M1 genişletilir ve küme
+yeniden sayılır. (2) Bu küme M13 ALANLARININ checkpoint
+karşılıklarını sayar; `checkpoint_dirty_state` bir M13 alanının
+karşılığı DEĞİLDİR (v2 sütunudur) ve onun kopyalanıp
+kopyalanmayacağı M4 KAPSAM'da AÇIKÇA KARARA BAĞLANMAMIŞTIR — bu
+bölüm o soruyu KAPATMAZ.
+
+---
+
 ### SÜTUN MUHASEBESİ
 
 `checkpoint_sha_source` Faz 1B'nin eklediği YENİ bir sütundur ve v2
@@ -467,6 +508,19 @@ taşıyanlar DEĞİL, aynı varsayıma dayananlardır.
 **SINIR:** ad-tabanlı tarama bu sınıfı TAM GÖREMEZ — C-07 hiçbir
 `checkpoint_` adı taşımadan çelişiyordu. Komşu taraması ANLAM
 üzerinden yapılır ve tamlık iddiası KURULAMAZ.
+
+### ASGARİ YORDAM
+
+Bir vaka düzeltildiğinde, AYNI GRUBUN tüm vakaları TAM METİN okunur.
+Bir madde düzeltildiğinde, o maddeye ATIF YAPAN tüm maddeler TAM
+METİN okunur.
+
+Bu bir ASGARİDİR, tamlık değil. Kalıp araması bu yordamın YERİNE
+GEÇMEZ; kalıp araması yalnız nereye BAKILACAĞINI daraltır.
+
+**M14 TAMLIK İDDİASI KURMAZ.** Farklı sözcüklerle yazılmış aynı
+varsayım bu yordamla da görülmeyebilir. Amaç hatayı imkânsız kılmak
+değil, AYNI HATANIN ÜÇÜNCÜ KEZ tekrarlanma olasılığını düşürmektir.
 
 ---
 
