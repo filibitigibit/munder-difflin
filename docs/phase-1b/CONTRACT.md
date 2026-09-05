@@ -26,6 +26,23 @@ run-start provenance: run başlarken, PTY'nin fiilen kullanacağı cwd
 REDDEDİLİR. Checkpoint değerinden "checkpoint anındaki durum" hükmü
 kurulamaz.
 
+### SÜTUN MUHASEBESİ
+
+`checkpoint_sha_source` Faz 1B'nin eklediği YENİ bir sütundur ve v2
+şemasında YOKTUR.
+
+KAPSAM: bu, `src/main/runs.ts` üzerinde grep ile ölçüldü (`grep -c` = 0)
+ve `runs.ts`'in `runs` şemasının DDL otoritesi olduğu discovery turunda
+ayrıca ölçülmüştü (DDL yazan iki yer: `db.ts` MIGRATIONS ve
+`runs.ts:applyRunSchema`). Üretim DB'sinin fiilî şema dökümü üzerinde
+ÖLÇÜLMEDİ.
+
+Bu sütun M13 alan ailesine dahil DEĞİLDİR ve M13'ün "11 yeni sütun"
+muhasebesine girmez.
+
+İzinli değerleri: `'run-start-copy'` | `'measured-at-checkpoint'`.
+v1'de yalnız `'run-start-copy'` üretilir.
+
 ---
 
 ## M2 — ÖLÇÜLEN EVREN
@@ -77,6 +94,32 @@ yoktu), `not_applicable` değildir (uygulanamaz olan bir şey yoktu).
 **KAPSAM:** `never_measured` YALNIZ M13'te tanımlanan YENİ provenance
 alanlarına uygulanır. Mevcut `base_sha`, `branch`, `worktree_path`
 sütunlarına UYGULANMAZ.
+
+### KAPSAM
+
+M4 beyaz listesi YALNIZ M13 alan ailesine uygulanır.
+
+`checkpoint_sha` M4'e TABİ DEĞİLDİR; M1'in kopyalama kuralına
+tabidir — değeri run-start ölçümünden KOPYALANIR ve kendi ölçüm
+durumu alanı TAŞIMAZ.
+
+`checkpoint_sha_source` kopyanın KAYNAĞINI beyan eder; bir ölçüm
+durumu DEĞİLDİR.
+
+`checkpoint_dirty_state` de M4'e TABİ DEĞİLDİR. Ancak bu alanın
+run-start'tan KOPYALANDIĞI İDDİA EDİLMEZ — o iddia bu belgede
+hiçbir yerde ölçülmedi. `checkpoint_dirty_state`'in semantiği
+sözleşmede halihazırda nasıl tanımlıysa ÖYLE KALIR; bu bölüm
+yalnız onun M4 beyaz listesine tabi OLMADIĞINI söyler.
+
+**`checkpoint_dirty_state`'in kopyalanıp kopyalanmayacağı ÖLÇÜLMEDİ
+ve bu turda KARARA BAĞLANMADI.**
+
+**`checkpoint_` ÖNEKİ SEMANTİK AİLE DEĞİLDİR:** `checkpoint_sha`,
+`checkpoint_sha_source` ve `checkpoint_dirty_state` ÜÇ AYRI
+KAVRAMDIR. Sırf adlarında `checkpoint_` geçtiği için aynı kurala
+sokulamaz — bu, bu belgenin ilk maddesinin ihlali olurdu (isim
+davranış kanıtı değildir).
 
 ### ENFORCEMENT BÖLÜNMESİ
 
@@ -367,6 +410,10 @@ alanı ve BİR durum alanı vardır. Adlar kanonik ve İNGİLİZCEDİR
 
 Artı tek türetilmiş alan: `provenance_complete`
 **Toplam 11 yeni sütun.**
+
+Bu 11 sütun M13 alan ailesidir. Faz 1B'nin eklediği TOPLAM yeni sütun
+sayısı **12**'dir: M13'ün 11 sütunu + M1'in `checkpoint_sha_source`
+sütunu.
 
 **M3 GEREĞİ AYRIM:** `git_pty_cwd` (PTY'ye fiilen verilen dizin),
 `git_toplevel` (o cwd'de git ile ÖLÇÜLEN repo kökü) ve

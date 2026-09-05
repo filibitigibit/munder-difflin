@@ -28,9 +28,29 @@ Her vaka kalıcı bir kimlik taşır ve altı alan hâlinde yazılır:
   süreci YOK, sahte çalıştırılabilir YOK.
 - `FIXTURE DILIMI` = gerçek git ortamı, sahte git `.exe`'si, gecikme
   enjeksiyonu, üretim ölçüm yolunun çağrılması veya Electron gerektiren vaka.
-- `ATANAMADI` = vakanın GIRDI'si bu iki kovadan hiçbirini gerektirmiyor
-  (örnek: yalnız kaynak incelemesi / yapısal denetim). **Bu bir kusur
-  değil, bir ölçüm sonucudur.**
+- `ATANAMADI` = vaka SINIFLANDIRILAMADI — GIRDI'si hangi dilime ait
+  olduğunu belirlemeye yetmiyor. **Bu bir kusur değil, bir ölçüm
+  sonucudur**, ama kapatılması gereken bir boşluktur.
+
+**ÜÇÜNCÜ DİLİM DEĞERİ — `YOK`:** bazı kalemler koşulabilir test değil,
+implementation sırasında yapılması gereken kaynak-inceleme veya eleme
+yükümlülüğüdür. Bunlar plandan silinmez ama bir dilimde KOŞMAZLAR.
+`DILIM: YOK` taşıyan kalem, implementation handoff'unda AYRI BİR İŞ
+KALEMİ olarak görünür — **"gate'i etkilemiyor" ifadesi zamanla
+"yapılmasına gerek yok"a DÖNÜŞEMEZ.**
+
+### GATE ÖLÇÜTÜ
+
+Implementation kapısı ATANAMADI SAYISINA değil, atanamayan kalemin
+SINIFINA bağlıdır.
+
+| durum | kapı |
+|---|---|
+| `ATANAMADI` (sınıflandırılamadı) > 0 | **KAPALI** |
+| `DILIM: YOK` (bilinerek koşulmayan yükümlülük) | **ETKİLENMEZ** |
+
+Bir kalemi `YOK` yapmak, sınıflandıramamanın örtüsü olarak
+KULLANILAMAZ; gerekçesi vakanın metninde yazılır.
 
 **DILIM ETİKETİNİN ANLAMI — YÜRÜTME BİLGİSİDİR, EVREN DEĞİLDİR.**
 Dilim ataması vakanın NEREDE koşacağını söyler. Vakanın kanıtladığı
@@ -867,14 +887,14 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - BEKLENEN GOZLEM: Checkpoint tarafındaki karşılık gelen alan aynı sınıfı taşır; `failed` ailesine dönüşmez, `measured` olmaz.
 - IZIN VERILEN HUKUM: Kopyalama sınıf koruyucudur; aile değişimi kopyalama sırasında da yasaktır.
 
-#### C-08 · checkpoint alanları da M4 beyaz listesine tabidir
+#### C-08 · checkpoint_sha M4'e tabi değildir; kopyalanmamış bir değer reddedilir
 - ID: C-08
 - MADDE: M1, M4
 - SINIF: REDDETME
 - DILIM: DILIM 1
-- GIRDI: `checkpoint_sha` alanına `measured` durumu ve NULL değer; ayrıca `failed(timeout)` durumu ve dolu değer yazılmaya çalışılır.
-- BEKLENEN GOZLEM: İki denemede de yazma reddedilir.
-- IZIN VERILEN HUKUM: Durum-değer ayrılamazlığı checkpoint sütunlarını da kapsar; beyaz liste run-start alanlarına özgü değildir.
+- GIRDI: `git_base_sha` alanı `measured` + `'abc123'` olan bir run safe quit ile duraklatılır; sonra `checkpoint_sha` alanına run-start değerinden FARKLI, bağımsız bir değer (`'zzz999'`) yazılmaya çalışılır. `checkpoint_sha` için bir durum sütunu YOKTUR ve aranmaz.
+- BEKLENEN GOZLEM: Yazma reddedilir; `checkpoint_sha` run-start değerine (`'abc123'`) eşit kalır ve `checkpoint_sha_source` = `'run-start-copy'` olarak durur.
+- IZIN VERILEN HUKUM: M4 beyaz listesi YALNIZ M13 alan ailesine uygulanır; `checkpoint_sha` M4'e TABİ DEĞİLDİR, M1'in kopyalama kuralına tabidir ve kendi ölçüm durumu alanı taşımaz. **ENFORCEMENT SINIRI: bu reddi hangi katmanın uygulayacağı BU BELGEDE TANIMLI DEĞİLDİR.** Bu alanda DB CHECK YOKTUR (ölçüldü: `checkpoint_sha_status` sütunu hiçbir yerde tanımlı değil), dolayısıyla **"DB bu yazıyı reddeder" hükmü KURULAMAZ**. Reddi uygulayacak yüzey (persistence API'si mi, trigger mı, başka bir katman mı) ÖLÇÜLMEDİ ve bu vaka onu ÖLÇÜLMEDİ olarak taşır. Bu vaka `checkpoint_dirty_state`'i KAPSAMAZ.
 
 #### C-09 · checkpoint_sha_source beyaz listesi kapalıdır
 - ID: C-09
@@ -1067,7 +1087,7 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - ID: R-02
 - MADDE: M9
 - SINIF: KABUL
-- DILIM: ATANAMADI
+- DILIM: YOK (kaynak-inceleme yükümlülüğü)
 - GIRDI: Ölçüm anı ile PTY'nin açıldığı an arasındaki kod yolu okunur ve o pencerede cwd'nin işaret ettiği hedefi (worktree kimliği, HEAD, dal) değiştirebilecek TÜM yollar sayılır: aynı süreçteki eşzamanlı spawn'lar, worktree GC/teardown süpürmesi, ephemeral worker watcher, hive router, kullanıcının harici git işlemleri, ajanın kendi git komutları.
 - BEKLENEN GOZLEM: Sayılan her yol için ya adıyla elenmiş bir gerekçe (o yolun bu pencereye giremeyeceğinin kanıtı) ya da R-01 sınıfında koşulabilir bir vaka üretilir. Sayım listesi boş bırakılamaz; "kod öyle görünüyor" gerekçe sayılmaz.
 - IZIN VERILEN HUKUM: Yarışın mümkün OLMADIĞI hükmü ancak bu sayım tamamlanıp her üye elendiğinde kurulabilir. Sayım eksikse hüküm kurulmaz.
