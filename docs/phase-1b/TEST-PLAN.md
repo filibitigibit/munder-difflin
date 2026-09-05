@@ -18,6 +18,11 @@ Her vaka kalıcı bir kimlik taşır ve altı alan hâlinde yazılır:
 | `GIRDI` | vakanın kurduğu durum |
 | `BEKLENEN GOZLEM` | ölçülecek olan; hükmün değil, gözlemin ifadesi |
 | `IZIN VERILEN HUKUM` | bu gözlemin desteklediği EN GENİŞ hüküm |
+| `DILIM` | `DILIM 1` \| `FIXTURE DILIMI` — hangi uygulama diliminde koşulur |
+
+**`DILIM` alanı yalnız v2'de eklenen vakalarda (G-12..G-20, W-17..W-21,
+U-01..U-05) bulunur.** Özgün 80 vakaya dilim ataması YAPILMAMIŞTIR; o
+atama bu turun işi değildi ve sayımda `ATANMAMIŞ` olarak raporlanır.
 
 **Sınıf, BEKLENEN GÖZLEMDEN türetilir.** Başarılı olması beklenen bir vaka
 `REDDETME` kovasına yazılmaz. Exit 0 vermesi gereken ama başka özelliği
@@ -127,6 +132,95 @@ Türetilmiş bayrak: `provenance_complete`.
 - GIRDI: G-09'un ürettiği, git alanları hiç ölçülmemiş legacy satırlar.
 - BEKLENEN GOZLEM: Bu satırların `provenance_complete` değeri false'tur.
 - IZIN VERILEN HUKUM: Faz 1A döneminde açılmış run'lardan provenance gerektiren PROVEN hüküm kurulamaz ve bayrak bunu beyan eder.
+
+## GRUP G ek bölümü — legacy göç semantiği (M10, M13)
+
+> **FIXTURE GEREKSİNİMİ (G-12..G-20 için bağlayıcı):** göç fixture'ı EN AZ ÜÇ
+> v2 satırı içerir ve bunlar birbirinden FARKLI provenance profilleri taşır:
+> (a) `worktree_path` DOLU olan bir satır, (b) tüm eski provenance sütunları
+> NULL olan bir satır, (c) farklı bir status/lifecycle aşamasındaki bir satır.
+> **Tek satırlık fixture ile koruma vakaları YAZILAMAZ.**
+
+#### G-12 · v2 satırları M13'ün beş alanının hepsinde never_measured alır
+- ID: G-12
+- MADDE: M10, M13
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Üç profilli v2 fixture'ı üzerinde göç uygulanır.
+- BEKLENEN GOZLEM: Her üç satırın da `git_base_sha_status`, `git_branch_status`, `git_toplevel_status`, `git_pty_cwd_status`, `git_worktree_path_status` alanlarının BEŞİ de `never_measured`; karşılık gelen beş değer alanı NULL. Beş alandan biri bile başka bir durum taşırsa vaka düşer.
+- IZIN VERILEN HUKUM: Göç, geçmiş satırlara ölçüm uydurmaz; ölçüm penceresinin geçtiğini alan düzeyinde beyan eder.
+
+#### G-13 · v2 satırları göç sonrası provenance_complete=false taşır
+- ID: G-13
+- MADDE: M10, M6
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: G-12 ile aynı fixture, göç sonrası.
+- BEKLENEN GOZLEM: Üç satırın da `provenance_complete` değeri false.
+- IZIN VERILEN HUKUM: `never_measured` tamamlığı bozar; Faz 1A döneminde açılmış run'lardan provenance gerektiren PROVEN hüküm kurulamaz.
+
+#### G-14 · SATIR KÜMESİ KORUMASI — tüm satırların tüm eski sütunları birebir
+- ID: G-14
+- MADDE: M10
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Göçten önce fixture'daki HER satırın HER eski sütunu tam olarak dökülür (üç satırın üçü de).
+- BEKLENEN GOZLEM: Göç sonrası aynı döküm alınır; eski sütun kümesi üzerinde iki döküm KÜMENİN TAMAMI için karakter karakter aynıdır. Tek bir satır üzerinde yapılan karşılaştırma bu vakayı GEÇİRMEZ.
+- IZIN VERILEN HUKUM: Göç hiçbir v2 satırının hiçbir eski sütun değerini değiştirmez. Hüküm kümenin tamamı için kurulur, seçilmiş bir satır için değil.
+
+#### G-15 · SATIR SAYISI KORUMASI
+- ID: G-15
+- MADDE: M10
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Göç öncesi `runs` satır sayısı sayılır.
+- BEKLENEN GOZLEM: Göç sonrası satır sayısı aynıdır; hiçbir satır kaybolmaz, hiçbir satır çoğalmaz.
+- IZIN VERILEN HUKUM: Göç satır kümesinin kardinalitesini korur.
+
+#### G-16 · SATIR KİMLİĞİ KORUMASI
+- ID: G-16
+- MADDE: M10
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Göç öncesi `run_id` kümesi toplanır.
+- BEKLENEN GOZLEM: Göç sonrası `run_id` kümesi öncekiyle birebir aynıdır — eksik, fazla veya değişmiş kimlik yoktur.
+- IZIN VERILEN HUKUM: Göç satır kimliklerini korur. Sayı korunmuş olsa bile kimlik değişmişse bu vaka düşer; G-15 tek başına bunu kapsamaz.
+
+#### G-17 · SENTINEL: worktree_path'i dolu olan satırın değeri aynen durur
+- ID: G-17
+- MADDE: M10
+- SINIF: POZITIF_KONTROL
+- DILIM: DILIM 1
+- GIRDI: Fixture'ın (a) profilli satırı — `worktree_path` dolu (ölçülmüş olgu: discovery'de `probe-iso` run'ında bu sütun `D:\mc-scratch\hive\worktrees\probe-iso` değeriyle görülmüştür).
+- BEKLENEN GOZLEM: Göç sonrası o satırın `worktree_path` değeri karakter karakter aynıdır.
+- IZIN VERILEN HUKUM: **Bu bir POZİTİF KONTROLDÜR.** Göç fixture'ında gerçekten dolu bir legacy sütun bulunduğunu ve korumanın en az bu satırda çalıştığını gösterir. **Tek başına evrensel koruma hükmünü KURMAZ** — o hüküm G-14, G-15, G-16'nın birlikte geçmesine bağlıdır.
+
+#### G-18 · AYRIM: legacy değer M13 sütununa kopyalanmaz
+- ID: G-18
+- MADDE: M10, M13
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Fixture'ın (a) profilli satırı, göç sonrası.
+- BEKLENEN GOZLEM: `worktree_path` eski değerini taşır; `git_worktree_path` NULL ve `git_worktree_path_status` = `never_measured`. İki sütun ayrıdır ve legacy değer yeni sütuna KOPYALANMAMIŞTIR. Aynı denetim `base_sha`/`git_base_sha` ve `branch`/`git_branch` için de yapılır.
+- IZIN VERILEN HUKUM: Tarihsel metadata ile ölçülmüş provenance ayrı sütunlarda kalır; göç bir tarihsel değeri ölçülmüş gibi göstermez.
+
+#### G-19 · göç işlemi M13 alanlarına measured/failed/not_applicable yazamaz
+- ID: G-19
+- MADDE: M10
+- SINIF: REDDETME
+- DILIM: DILIM 1
+- GIRDI: Göç işlemi çalıştırılır ve ürettiği v2 satırlarının M13 durum alanları okunur.
+- BEKLENEN GOZLEM: Hiçbir v2 satırının hiçbir M13 durum alanında `measured`, `measured_detached`, `failed(*)` veya `not_applicable(*)` yoktur; hepsi `never_measured`tir.
+- IZIN VERILEN HUKUM: **Bu vaka GÖÇ İŞLEMİNİN ÇIKTISINI ölçer.** "Bu satıra gelecekte hiçbir zaman yazılamaz" biçiminde daha güçlü bir DB hükmü İDDİA EDİLMEZ; M10 yalnız göç işlemini sınırlar, satırın geleceğini değil.
+
+#### G-20 · POZİTİF KONTROL: üç profilli fixture gerçekten v2 ve gerçekten üç profilli
+- ID: G-20
+- MADDE: M10
+- SINIF: POZITIF_KONTROL
+- DILIM: DILIM 1
+- GIRDI: G-12..G-19'un kullandığı göç-öncesi fixture.
+- BEKLENEN GOZLEM: Göç çağrılmadan önce `pragma user_version` = 2; M13 sütunları `pragma table_info(runs)` çıktısında YOKTUR; ve fixture gerçekten üç ayrı profil taşır — bir satırda `worktree_path` dolu, bir satırda tüm eski provenance sütunları NULL, bir satır farklı bir `status` değerinde.
+- IZIN VERILEN HUKUM: G grubunun ek vakalarının "göç sonrası şu oldu" gözlemleri, zaten göç edilmiş ya da tek profilli bir fixture'ı ölçmüyordur.
 
 ---
 
@@ -259,6 +353,58 @@ Türetilmiş bayrak: `provenance_complete`.
 - GIRDI: W grubunun reddetme vakalarının kullandığı aynı yazma çağrısı, izinli bir kombinasyonla çalıştırılır ve yazılan satır geri okunur.
 - BEKLENEN GOZLEM: Satır yazılır ve geri okunduğunda beklenen değerleri taşır.
 - IZIN VERILEN HUKUM: W grubundaki reddetmeler, yazma yolunun tümüyle bozuk olmasından kaynaklanmıyordur; kısıt seçicidir.
+
+## GRUP W ek bölümü — yeni durumlar beyaz listede (M4, M13)
+
+> **KAPSAM UYARISI (W-17..W-21 için bağlayıcı):** bu vakalar YALNIZ DB yapısal
+> geçerliliğini test eder. **ÜRETİM KANITI DEĞİLDİR** — bir durumun beyaz
+> listede bulunması, onu üreten bir kod yolunun var olduğunu kanıtlamaz.
+> `failed(unusable-output)`'u ÜRETEN katman producer'dır (GRUP U).
+
+#### W-17 · failed(unusable-output) + NULL kabul edilir
+- ID: W-17
+- MADDE: M4, M5
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Bir M13 alanına `failed(unusable-output)` durumu ve NULL değer yazılır.
+- BEKLENEN GOZLEM: Yazma geçer.
+- IZIN VERILEN HUKUM: Beyaz liste bu sebebi tanır ve kaydedilebilir. Bu, sebebin üretildiğini KANITLAMAZ; yalnız DB'nin onu reddetmediğini gösterir.
+
+#### W-18 · failed(unusable-output) + dolu değer reddedilir
+- ID: W-18
+- MADDE: M4, M5
+- SINIF: REDDETME
+- DILIM: DILIM 1
+- GIRDI: Bir M13 alanına `failed(unusable-output)` durumu ve boş olmayan bir değer yazılır.
+- BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
+- IZIN VERILEN HUKUM: Kullanılamaz çıktıdan bir değer damıtılıp kaydedilemez. DB yapısal geçerliliği; üretim kanıtı değildir.
+
+#### W-19 · never_measured + NULL kabul edilir
+- ID: W-19
+- MADDE: M4
+- SINIF: KABUL
+- DILIM: DILIM 1
+- GIRDI: Bir M13 alanına `never_measured` durumu ve NULL değer yazılır.
+- BEKLENEN GOZLEM: Yazma geçer.
+- IZIN VERILEN HUKUM: `never_measured` beyaz listededir ve kaydedilebilir. DB yapısal geçerliliği; üretim kanıtı değildir.
+
+#### W-20 · never_measured + dolu değer reddedilir
+- ID: W-20
+- MADDE: M4
+- SINIF: REDDETME
+- DILIM: DILIM 1
+- GIRDI: Bir M13 alanına `never_measured` durumu ve boş olmayan bir değer yazılır.
+- BEKLENEN GOZLEM: CHECK kısıtı yazmayı reddeder.
+- IZIN VERILEN HUKUM: "Hiç ölçülmedi" beyanı bir değerle birlikte kaydedilemez. DB yapısal geçerliliği; üretim kanıtı değildir.
+
+#### W-21 · measured_detached, git_branch_status dışındaki dört M13 alanında reddedilir
+- ID: W-21
+- MADDE: M4, M13
+- SINIF: REDDETME
+- DILIM: DILIM 1
+- GIRDI: `measured_detached` durumu `git_base_sha_status`, `git_toplevel_status`, `git_pty_cwd_status`, `git_worktree_path_status` alanlarına sırayla yazılır. Vaka bu dört alan üzerinde parametrelenir.
+- BEKLENEN GOZLEM: Dört parametrenin her birinde CHECK kısıtı yazmayı reddeder.
+- IZIN VERILEN HUKUM: `measured_detached` M13 ailesinde yalnız `git_branch_status`'a özgüdür. **W-15'ten FARKLIDIR:** W-15 legacy sütun adları üzerinde aynı kısıtı test eder; bu vaka M13 alan ailesini test eder. İkisi ayrı sütun kümesidir. DB yapısal geçerliliği; üretim kanıtı değildir.
 
 ---
 
@@ -447,6 +593,64 @@ komutlarıyla alınan BAĞIMSIZ ORACLE ile karşılaştırılır.
 - GIRDI: Zaman aşımına uğrayan bir git komutu; öldürülen süreç ayrıca sıfır dışı bir çıkış kodu da üretir.
 - BEKLENEN GOZLEM: Kaydedilen sınıf `failed(timeout)`tır, `failed(command-nonzero)` DEĞİLDİR.
 - IZIN VERILEN HUKUM: İki başarısızlık sınıfı çakıştığında kayıt kök sebebi taşır; sıfır dışı çıkış kodu zaman aşımını maskelemez.
+
+---
+
+# GRUP U — producer semantiği (M5)
+
+> **BU GRUP FIXTURE DİLİMİNE AİTTİR — dilim 1'de koşulmaz.** GRUP W'nin DB
+> vakaları `failed(unusable-output)`'un beyaz listede olduğunu gösterir; bu grup
+> onu ÜRETEN katmanı (`runGit` ve onu çağıran ölçüm yolu) ölçer. İkisi ayrı
+> iddialardır ve biri diğerinin yerine geçmez.
+>
+> Fixture'ları M11'e tabidir: sahte git bir `.exe` OLMAK ZORUNDADIR (`.cmd`
+> gölgelemez, ÖLÇÜLDÜ) ve her fixture yazdığı/tükettiği yolların scratch altında
+> olduğunu fail-closed doğrular.
+
+#### U-01 · exit 0 + boş stdout → failed(unusable-output)
+- ID: U-01
+- MADDE: M5
+- SINIF: KABUL
+- DILIM: FIXTURE DILIMI
+- GIRDI: Sahte git `.exe`, sıfır çıkış kodu ve tamamen boş stdout döndürür. Üretim ölçüm yolu bir M13 alanı için çağrılır.
+- BEKLENEN GOZLEM: İlgili alan `failed(unusable-output)` durumu ve NULL değer taşır. `measured` + boş string ÜRETİLMEZ.
+- IZIN VERILEN HUKUM: Producer, süreç başarısını ölçüm başarısı saymaz. Ölçülmüş olgu: bugünkü kod bu girdide `current:''` üretiyordu; bu vaka o davranışın değiştiğini gösterir.
+
+#### U-02 · exit 0 + ayrıştırılamaz stdout → failed(unusable-output)
+- ID: U-02
+- MADDE: M5
+- SINIF: KABUL
+- DILIM: FIXTURE DILIMI
+- GIRDI: Sahte git `.exe`, sıfır çıkış kodu ve beklenen biçime uymayan bir stdout döndürür (örnek: SHA beklenen alanda 40-hex olmayan bir metin).
+- BEKLENEN GOZLEM: İlgili alan `failed(unusable-output)` durumu ve NULL değer taşır.
+- IZIN VERILEN HUKUM: Kullanılamazlık boşluktan ibaret değildir; biçim ihlali de aynı sınıfa düşer.
+
+#### U-03 · exit 0 + geçerli çıktı → measured (AYNI KOŞUMDA)
+- ID: U-03
+- MADDE: M5
+- SINIF: KABUL
+- DILIM: FIXTURE DILIMI
+- GIRDI: U-01 ve U-02 ile AYNI koşumda, aynı sahte git `.exe` bu kez geçerli bir çıktı döndürür.
+- BEKLENEN GOZLEM: İlgili alan `measured` durumu ve dolu, beklenen değeri taşır.
+- IZIN VERILEN HUKUM: **U-01/U-02'nin reddetmeleri "her şeyi reddeden kapı"dan gelmiyordur.** Bu vaka aynı koşumda geçmezse U-01 ve U-02'nin sonuçları kullanılamaz.
+
+#### U-04 · POZİTİF KONTROL: sahte git gerçekten çağrıldı
+- ID: U-04
+- MADDE: M5, M11
+- SINIF: POZITIF_KONTROL
+- DILIM: FIXTURE DILIMI
+- GIRDI: U-01..U-03 koşarken sahte git her çağrıda kendi dump dosyasına argv, cwd ve ortamını yazar; ayrıca git alt süreç sayacı okunur.
+- BEKLENEN GOZLEM: Beklenen sayıda dump dosyası oluşur, `execPath` scratch altındaki sahte `.exe`yi gösterir ve sayaç sıfırdan büyüktür.
+- IZIN VERILEN HUKUM: U grubunun gözlemleri gerçek git'in cevapladığı bir koşumdan gelmiyordur. Ölçülmüş olgu: `.cmd` shim'i PATH'te ilk sırada olmasına rağmen hiç çağrılmamış ve gerçek git cevaplamıştı; bu kontrol o sessiz başarısızlığı yakalar.
+
+#### U-05 · ALAN BAZINDA boş çıktı semantiği tablosu üretilir
+- ID: U-05
+- MADDE: M5
+- SINIF: KABUL
+- DILIM: FIXTURE DILIMI
+- GIRDI: M13'ün beş alanının her biri için, boş çıktının meşru "yok" mu yoksa `unusable` mı olduğu producer ölçülerek belirlenir (örnek: upstream sorgusu upstream yokken meşru olarak boş döner).
+- BEKLENEN GOZLEM: Beş alanın her biri için "boş çıktı = meşru yok" veya "boş çıktı = unusable" kararı ölçümle üretilir ve tabloya yazılır. Karar verilemeyen alan ÖLÇÜLMEDİ olarak işaretlenir, varsayılan bir sınıfa atanmaz.
+- IZIN VERILEN HUKUM: M5'in KAPSAM SINIRI bu dilimde kapanır. **Bugün bu eşleme TANIMSIZDIR ve ÖLÇÜLMEDİ olarak taşınır**; bu vaka onu tanımlamayı zorunlu kılar, tanımı önceden VERMEZ.
 
 ---
 
